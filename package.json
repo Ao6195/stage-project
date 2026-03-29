@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "server": "node server.js",
+    "frontend": "npm run dev --prefix sent-doc"
+  },
   "dependencies": {
     "chart.js": "^4.5.1",
     "react-chartjs-2": "^5.3.1"
