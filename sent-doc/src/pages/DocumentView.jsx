@@ -19,6 +19,7 @@ export default function DocumentView() {
   const [commenting, setCommenting] = useState(false);
   const [voting, setVoting] = useState(false);
   const [openingFile, setOpeningFile] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [updatingMeta, setUpdatingMeta] = useState(false);
   const [replacingFile, setReplacingFile] = useState(false);
   const [savingText, setSavingText] = useState(false);
@@ -160,6 +161,22 @@ export default function DocumentView() {
     }
   };
 
+  const handleApprove = async () => {
+    setApproving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axios.post(`${API_BASE}/documents/${docId}/approve`, {}, getAuthConfig());
+      setDoc(response.data);
+      setSuccess(t('document_approved_successfully'));
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('document_approval_failed'));
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const handleReplaceFile = async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
@@ -223,7 +240,7 @@ export default function DocumentView() {
         <section className="surface-card empty-state-card">
         <h3>{t('document_unavailable')}</h3>
         <p>{error || t('document_not_found')}</p>
-        <Link className="tab-btn active action-link-btn" to="/">
+        <Link className="tab-btn active action-link-btn" to="/portal">
           {t('return_to_assets')}
         </Link>
       </section>
@@ -234,6 +251,8 @@ export default function DocumentView() {
     <div className="dashboard-stack document-page">
       <DocumentHeaderCard
         doc={doc}
+        approving={approving}
+        onApprove={handleApprove}
         openingFile={openingFile}
         onOpenOriginal={handleOpenOriginal}
       />

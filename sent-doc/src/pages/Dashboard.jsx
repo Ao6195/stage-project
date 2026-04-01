@@ -23,7 +23,7 @@ const Dashboard = ({ user }) => {
   const handleApprove = async (id) => {
     try {
       await axios.put(`/api/documents/${id}/approve`);
-      toast.success("ITCORE Archive Updated: Document Approved");
+      toast.success("ITDOC Archive Updated: Document Approved");
       fetchDocs();
     } catch (err) {
       toast.error("Unauthorized: Only Adam can approve.");

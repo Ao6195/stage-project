@@ -50,7 +50,7 @@ export default function ProfileCard({ user, canPromote, onView, onPromote }) {
       </div>
 
       <div className="profile-card-actions">
-        <button type="button" className="ghost-btn" onClick={() => onView(user)}>
+        <button type="button" className="ghost-btn profile-action-btn" onClick={() => onView(user)}>
           <FiEye />
           <span>{t('view_activity')}</span>
         </button>

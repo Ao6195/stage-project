@@ -1,27 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiArrowLeft, FiDownloadCloud, FiEye, FiFileText, FiMessageSquare, FiRefreshCw, FiUser } from 'react-icons/fi';
-import { formatScore } from '../../lib/formatters';
+import { FiCheck, FiDownloadCloud, FiEye, FiFileText, FiMessageSquare, FiRefreshCw, FiUser, FiX } from 'react-icons/fi';
 import { useLanguage } from '../../lib/i18n';
 
-export default function DocumentHeaderCard({ doc, openingFile, onOpenOriginal }) {
+export default function DocumentHeaderCard({ doc, openingFile, approving, onApprove, onOpenOriginal }) {
   const { t } = useLanguage();
 
   return (
     <section className="surface-card document-header-card">
-      <div className="document-header-top">
-        <Link to="/" className="ghost-link-chip">
-          <FiArrowLeft />
-          <span>{t('back')}</span>
-        </Link>
-        <span
-          className={`score-chip ${
-            Number(doc.score || 0) >= 0 ? 'score-chip-positive' : 'score-chip-negative'
-          }`}
-        >
-          {t('score')} {formatScore(doc.score)}
-        </span>
-      </div>
+      <Link to="/portal" className="document-back-btn" aria-label={t('back')}>
+        <FiX />
+      </Link>
 
       <div className="document-header-grid">
         <div>
@@ -31,6 +20,7 @@ export default function DocumentHeaderCard({ doc, openingFile, onOpenOriginal })
 
           <div className="document-tag-row">
             <span className="badge approved">{doc.department}</span>
+            {doc.isPending && <span className="badge pending">{t('pending')}</span>}
             <span className="document-tag">
               <FiFileText />
               <span>{doc.fileCategory}</span>
@@ -61,6 +51,12 @@ export default function DocumentHeaderCard({ doc, openingFile, onOpenOriginal })
               <strong>{doc.downloadCount || 0}</strong>
             </div>
           </div>
+          {doc.canApprove && (
+            <button type="button" className="ghost-btn" onClick={onApprove} disabled={approving}>
+              <FiCheck />
+              <span>{approving ? t('saving') : t('approve')}</span>
+            </button>
+          )}
           <button type="button" className="main-btn" onClick={onOpenOriginal} disabled={openingFile}>
             <FiEye />
             <span>{openingFile ? t('opening') : t('open_file')}</span>

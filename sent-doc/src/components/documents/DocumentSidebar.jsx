@@ -1,6 +1,5 @@
 import React from 'react';
 import { FiEdit3, FiThumbsDown, FiThumbsUp, FiUploadCloud } from 'react-icons/fi';
-import { formatScore } from '../../lib/formatters';
 import { useLanguage } from '../../lib/i18n';
 
 export default function DocumentSidebar({
@@ -21,7 +20,7 @@ export default function DocumentSidebar({
     <aside className="document-side-stack">
       <section className="surface-card document-vote-card">
         <p className="dashboard-eyebrow">{t('community')}</p>
-        <div className="document-score-value">{formatScore(doc.score)}</div>
+        <div className="document-score-value">{doc.score || 0}</div>
         <p className="document-score-copy">{t('vote_copy')}</p>
 
         <div className="vote-actions">

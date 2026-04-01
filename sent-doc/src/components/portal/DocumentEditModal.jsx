@@ -23,6 +23,7 @@ export default function DocumentEditModal({
             <input
               value={editForm.title}
               onChange={(event) => onChange('title', event.target.value)}
+              maxLength={15}
               required
             />
           </label>

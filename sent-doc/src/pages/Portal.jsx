@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { FiBarChart2, FiFolderPlus, FiLayers } from 'react-icons/fi';
 import DocumentCard from '../components/portal/DocumentCard';
 import DocumentDeleteModal from '../components/portal/DocumentDeleteModal';
 import DocumentEditModal from '../components/portal/DocumentEditModal';
@@ -30,7 +29,7 @@ export default function Portal() {
   const [editForm, setEditForm] = useState({ title: '', description: '' });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [approvingId, setApprovingId] = useState('');
 
   const rankedDepartments = useMemo(
     () =>
@@ -65,15 +64,6 @@ export default function Portal() {
     [activeDept, docs, sortMode]
   );
 
-  const stats = useMemo(() => {
-    const totalScore = docs.reduce((sum, doc) => sum + Number(doc.score || 0), 0);
-    return [
-      { label: t('assets'), value: docs.length, icon: <FiLayers /> },
-      { label: t('department'), value: activeDept, icon: <FiFolderPlus /> },
-      { label: t('community_score'), value: totalScore, icon: <FiBarChart2 /> },
-    ];
-  }, [activeDept, docs, t]);
-
   useEffect(() => {
     fetchDocs();
   }, []);
@@ -106,10 +96,12 @@ export default function Portal() {
     try {
       const formData = new FormData(event.target);
       formData.append('department', activeDept);
-      await axios.post(`${API_BASE}/upload`, formData, getAuthConfig());
+      const response = await axios.post(`${API_BASE}/upload`, formData, getAuthConfig());
       event.target.reset();
       setSelectedFileName(t('no_file_selected'));
-      setSuccess(t('asset_published_successfully'));
+      setSuccess(
+        response.data?.isPending ? t('asset_sent_for_approval') : t('asset_published_successfully')
+      );
       fetchDocs();
     } catch (requestError) {
       setError(requestError.response?.data?.message || t('upload_failed'));
@@ -169,24 +161,39 @@ export default function Portal() {
     });
   };
 
+  const handleApprove = async (doc) => {
+    setApprovingId(String(doc._id || doc.id));
+    setError('');
+    setSuccess('');
+
+    try {
+      await axios.post(`${API_BASE}/documents/${doc._id || doc.id}/approve`, {}, getAuthConfig());
+      setSuccess(t('document_approved_successfully'));
+      fetchDocs();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('document_approval_failed'));
+    } finally {
+      setApprovingId('');
+    }
+  };
+
   return (
     <div className="dashboard-stack">
-      <section className="dashboard-hero">
-        <div>
-          <p className="dashboard-eyebrow">{t('workspace')}</p>
-          <h1>{user.name || user.username || t('welcome_back')}</h1>
-          <p className="dashboard-copy">{t('workspace_copy')}</p>
-        </div>
+      <section className="surface-card">
+        <header className="section-head">
+          <div>
+            <p className="dashboard-eyebrow">{t('publish')}</p>
+            <h2>{t('upload_new_asset')}</h2>
+          </div>
+        </header>
 
-        <div className="dashboard-stat-grid">
-          {stats.map((stat) => (
-            <article key={stat.label} className="dashboard-stat-card">
-              <div className="stat-icon">{stat.icon}</div>
-              <span>{stat.label}</span>
-              <strong>{stat.value}</strong>
-            </article>
-          ))}
-        </div>
+        <UploadAssetForm
+          selectedFileName={selectedFileName}
+          onSubmit={handleUpload}
+          onFileChange={(event) =>
+            setSelectedFileName(event.target.files?.[0]?.name || t('no_file_selected'))
+          }
+        />
       </section>
 
       <section className="surface-card">
@@ -229,23 +236,6 @@ export default function Portal() {
         </div>
       </section>
 
-      <section className="surface-card">
-        <header className="section-head">
-          <div>
-            <p className="dashboard-eyebrow">{t('publish')}</p>
-            <h2>{t('upload_new_asset')}</h2>
-          </div>
-        </header>
-
-        <UploadAssetForm
-          selectedFileName={selectedFileName}
-          onSubmit={handleUpload}
-          onFileChange={(event) =>
-            setSelectedFileName(event.target.files?.[0]?.name || t('no_file_selected'))
-          }
-        />
-      </section>
-
       {error && <div className="feedback-panel error inline-feedback">{error}</div>}
       {success && <div className="feedback-panel success inline-feedback">{success}</div>}
 
@@ -256,7 +246,6 @@ export default function Portal() {
       ) : activeDocs.length === 0 ? (
         <section className="surface-card empty-state-card">
           <h3>{t('no_assets_in', { department: activeDept })}</h3>
-          <p>{t('assets_appear_copy')}</p>
         </section>
       ) : (
         <div className="card-grid polished-card-grid">
@@ -264,6 +253,8 @@ export default function Portal() {
             <DocumentCard
               key={doc._id || doc.id}
               doc={doc}
+              approving={approvingId === String(doc._id || doc.id)}
+              onApprove={handleApprove}
               onEdit={openEditModal}
               onDelete={setDeleteTarget}
             />

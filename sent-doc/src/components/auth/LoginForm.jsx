@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiAtSign, FiLock, FiMail } from 'react-icons/fi';
 import { useLanguage } from '../../lib/i18n';
 
-export default function LoginForm({ form, submitting, onChange, onSubmit }) {
+export default function LoginForm({ form, submitting, onChange, onSubmit, googleBlock }) {
   const { t } = useLanguage();
 
   return (
@@ -45,6 +45,8 @@ export default function LoginForm({ form, submitting, onChange, onSubmit }) {
           {t('forgot_password')}
         </Link>
       </div>
+
+      {googleBlock}
 
       <button type="submit" className="main-btn auth-submit-btn" disabled={submitting}>
         <FiMail />

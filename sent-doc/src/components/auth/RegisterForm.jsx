@@ -2,7 +2,7 @@ import React from 'react';
 import { FiCheckCircle, FiLock, FiMail, FiUser } from 'react-icons/fi';
 import { useLanguage } from '../../lib/i18n';
 
-export default function RegisterForm({ form, submitting, onChange, onSubmit }) {
+export default function RegisterForm({ form, submitting, onChange, onSubmit, googleBlock }) {
   const { t } = useLanguage();
 
   return (
@@ -74,6 +74,8 @@ export default function RegisterForm({ form, submitting, onChange, onSubmit }) {
           />
         </label>
       </div>
+
+      {googleBlock}
 
       <button type="submit" className="main-btn auth-submit-btn" disabled={submitting}>
         <FiMail />

@@ -73,7 +73,6 @@ export default function Forgot() {
           </span>
           <div className="auth-brand compact-brand">
             <h1>{t('recover_access')}</h1>
-            <p>{t('recover_copy')}</p>
           </div>
         </section>
 

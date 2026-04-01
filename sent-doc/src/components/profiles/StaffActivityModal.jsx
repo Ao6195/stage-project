@@ -1,7 +1,7 @@
 import React from 'react';
-import { Bar, Pie } from 'react-chartjs-2';
+import { Line, Pie } from 'react-chartjs-2';
 import { Link } from 'react-router-dom';
-import { FiActivity, FiBarChart2, FiPieChart, FiTrendingUp } from 'react-icons/fi';
+import { FiActivity, FiBarChart2, FiPieChart, FiTrendingUp, FiX } from 'react-icons/fi';
 import { useLanguage } from '../../lib/i18n';
 
 const RANGE_OPTIONS = ['week', 'twoWeeks', 'month'];
@@ -17,21 +17,31 @@ export default function StaffActivityModal({
 }) {
   const { t } = useLanguage();
   const activeRange = viewData?.activity?.[selectedRange] || { labels: [], data: [] };
-  const scrollingDocuments = viewData?.documents?.length
+  const shouldLoopDocuments = (viewData?.documents?.length || 0) >= 5;
+  const scrollingDocuments = shouldLoopDocuments
     ? [...viewData.documents, ...viewData.documents]
-    : [];
+    : viewData?.documents || [];
+  const movingActivityLine = t('moving_activity_line');
+  const sentOverTime = t('sent_over_time');
+  const contributionMix = t('contribution_mix');
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="staff-title">
-      <div className="modal-card staff-modal-card">
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="staff-title"
+      onClick={onClose}
+    >
+      <div className="modal-card staff-modal-card" onClick={(event) => event.stopPropagation()}>
         <div className="staff-modal-head">
           <div>
             <p className="dashboard-eyebrow">{t('staff_view')}</p>
             <h3 id="staff-title">{target.name || target.username}</h3>
             <p className="modal-copy">{target.email}</p>
           </div>
-          <button type="button" className="ghost-btn" onClick={onClose}>
-            {t('close')}
+          <button type="button" className="staff-close-btn" onClick={onClose} aria-label={t('close')}>
+            <FiX />
           </button>
         </div>
 
@@ -71,16 +81,18 @@ export default function StaffActivityModal({
               <div className="staff-section-head">
                 <div>
                   <p className="dashboard-eyebrow">{t('documents_sent_ever')}</p>
-                  <h4 className="section-title-with-icon">
-                    <FiActivity />
-                    <span>{t('moving_activity_line')}</span>
-                  </h4>
+                  {movingActivityLine ? (
+                    <h4 className="section-title-with-icon">
+                      <FiActivity />
+                      <span>{movingActivityLine}</span>
+                    </h4>
+                  ) : null}
                 </div>
               </div>
 
               {viewData.documents?.length ? (
                 <div className="staff-documents-marquee">
-                  <div className="staff-documents-track">
+                  <div className={`staff-documents-track ${shouldLoopDocuments ? 'is-looping' : 'is-static'}`}>
                     {scrollingDocuments.map((document, index) => (
                       <Link
                         key={`${document._id || document.id}-${index}`}
@@ -109,10 +121,12 @@ export default function StaffActivityModal({
                 <div className="staff-section-head">
                 <div>
                   <p className="dashboard-eyebrow">{t('contribution_volume')}</p>
-                  <h4 className="section-title-with-icon">
-                    <FiBarChart2 />
-                    <span>{t('sent_over_time')}</span>
-                  </h4>
+                  {sentOverTime ? (
+                    <h4 className="section-title-with-icon">
+                      <FiBarChart2 />
+                      <span>{sentOverTime}</span>
+                    </h4>
+                  ) : null}
                 </div>
                 <div className="staff-range-switcher">
                     {RANGE_OPTIONS.map((option) => (
@@ -129,15 +143,23 @@ export default function StaffActivityModal({
                 </div>
 
                 <div className="staff-chart-shell">
-                  <Bar
+                  <Line
                     data={{
                       labels: activeRange.labels,
                       datasets: [
                         {
                           label: t('documents_sent'),
                           data: activeRange.data,
-                          backgroundColor: '#2563eb',
-                          borderRadius: 10,
+                          borderColor: '#2563eb',
+                          backgroundColor: 'rgba(37, 99, 235, 0.14)',
+                          pointBackgroundColor: '#2563eb',
+                          pointBorderColor: '#ffffff',
+                          pointRadius: 4,
+                          pointHoverRadius: 5,
+                          pointBorderWidth: 2,
+                          borderWidth: 3,
+                          tension: 0.34,
+                          fill: true,
                         },
                       ],
                     }}
@@ -157,10 +179,12 @@ export default function StaffActivityModal({
                 <div className="staff-section-head">
                 <div>
                   <p className="dashboard-eyebrow">{t('categories')}</p>
-                  <h4 className="section-title-with-icon">
-                    <FiPieChart />
-                    <span>{t('contribution_mix')}</span>
-                  </h4>
+                  {contributionMix ? (
+                    <h4 className="section-title-with-icon">
+                      <FiPieChart />
+                      <span>{contributionMix}</span>
+                    </h4>
+                  ) : null}
                 </div>
                 </div>
 

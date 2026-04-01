@@ -73,7 +73,7 @@ export default function Auth({ setToken }) {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     setToken(data.token);
-    navigate('/');
+    navigate('/portal');
   };
 
   const submitLogin = async (event) => {
@@ -218,26 +218,6 @@ export default function Auth({ setToken }) {
             <AuthTabs view={view} onSwitch={switchTo} />
           )}
 
-          {(view === LOGIN_VIEW || view === REGISTER_VIEW) && googleEnabled && (
-            <div className="auth-google-block">
-              <div className="auth-divider">
-                <span>{t('or_continue_with')}</span>
-              </div>
-              <div className="auth-google-button">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => setError(t('google_sign_in_failed'))}
-                  locale={language === 'fr' ? 'fr' : 'en'}
-                  text="continue_with"
-                  theme="outline"
-                  size="large"
-                  shape="pill"
-                  width="100%"
-                />
-              </div>
-            </div>
-          )}
-
           {feedback && (
             <div className={`feedback-panel ${feedback.type}`} role="status" aria-live="polite">
               {feedback.message}
@@ -250,6 +230,27 @@ export default function Auth({ setToken }) {
               submitting={submitting}
               onChange={updateLoginForm}
               onSubmit={submitLogin}
+              googleBlock={
+                googleEnabled ? (
+                  <div className="auth-google-block">
+                    <div className="auth-divider">
+                      <span>{t('or_continue_with')}</span>
+                    </div>
+                    <div className="auth-google-button">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError(t('google_sign_in_failed'))}
+                        locale={language === 'fr' ? 'fr' : 'en'}
+                        text="continue_with"
+                        theme="outline"
+                        size="large"
+                        shape="pill"
+                        width={320}
+                      />
+                    </div>
+                  </div>
+                ) : null
+              }
             />
           )}
 
@@ -259,6 +260,27 @@ export default function Auth({ setToken }) {
               submitting={submitting}
               onChange={updateRegisterForm}
               onSubmit={submitRegister}
+              googleBlock={
+                googleEnabled ? (
+                  <div className="auth-google-block">
+                    <div className="auth-divider">
+                      <span>{t('or_continue_with')}</span>
+                    </div>
+                    <div className="auth-google-button">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError(t('google_sign_in_failed'))}
+                        locale={language === 'fr' ? 'fr' : 'en'}
+                        text="continue_with"
+                        theme="outline"
+                        size="large"
+                        shape="pill"
+                        width={320}
+                      />
+                    </div>
+                  </div>
+                ) : null
+              }
             />
           )}
 

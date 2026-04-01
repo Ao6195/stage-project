@@ -1,28 +1,42 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiEdit3, FiEye, FiFileText, FiMessageSquare, FiTrash2 } from 'react-icons/fi';
+import { FiCheck, FiEdit3, FiEye, FiFileText, FiMessageSquare, FiTrash2 } from 'react-icons/fi';
 import { useLanguage } from '../../lib/i18n';
 
-export default function DocumentCard({ doc, onEdit, onDelete }) {
+export default function DocumentCard({ doc, approving, onEdit, onDelete, onApprove }) {
   const { t } = useLanguage();
 
   return (
     <article className="doc-card polished-doc-card">
-      <div className="card-top">
-        <span className="badge approved">v{doc.history?.length || 1}</span>
-        <span
-          className={`score-chip ${
-            Number(doc.score || 0) >= 0 ? 'score-chip-positive' : 'score-chip-negative'
-          }`}
-        >
-          {t('score')} {Number(doc.score || 0) > 0 ? `+${doc.score}` : doc.score || 0}
-        </span>
-      </div>
+      {(doc.isPending || doc.canApprove) && (
+        <div className="card-top">
+          {doc.isPending ? <span className="badge pending">{t('pending')}</span> : <span />}
+          {doc.canApprove && (
+            <button
+              type="button"
+              className="ghost-btn card-mini-btn approve-btn"
+              onClick={() => onApprove(doc)}
+              disabled={approving}
+            >
+              <FiCheck />
+              <span>{approving ? t('saving') : t('approve')}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <h3>{doc.title}</h3>
       <p>{doc.description}</p>
 
       <div className="doc-card-meta">
+        <span
+          className={`score-chip ${
+            Number(doc.score || 0) >= 0 ? 'score-chip-positive' : 'score-chip-negative'
+          }`}
+        >
+          <span>{t('likes')}</span>
+          <span>{doc.score || 0}</span>
+        </span>
         <span>
           <FiFileText />
           <span>{doc.fileCategory || 'file'}</span>

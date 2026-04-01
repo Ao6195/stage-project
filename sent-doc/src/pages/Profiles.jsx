@@ -5,6 +5,8 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   ArcElement,
   Tooltip,
   Legend,
@@ -16,7 +18,16 @@ import StaffActivityModal from '../components/profiles/StaffActivityModal';
 import { API_BASE, getAuthConfig } from '../lib/api';
 import { useLanguage } from '../lib/i18n';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Tooltip,
+  Legend
+);
 
 export default function Profiles() {
   const { t } = useLanguage();
@@ -119,7 +130,6 @@ export default function Profiles() {
           <div>
             <p className="dashboard-eyebrow">{t('directory')}</p>
             <h1>{t('team_profiles')}</h1>
-            <p className="dashboard-copy">{t('staff_copy')}</p>
           </div>
 
           <div className="search-card">
@@ -141,7 +151,6 @@ export default function Profiles() {
         {sortedUsers.length === 0 ? (
           <section className="surface-card empty-state-card">
             <h3>{t('no_profiles_yet')}</h3>
-            <p>{t('run_search_copy')}</p>
           </section>
         ) : (
           <div className="profile-grid polished-profile-grid">

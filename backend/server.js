@@ -126,6 +126,9 @@ const DocSchema = new mongoose.Schema(
     fileCategory: String,
     ownerId: mongoose.Schema.Types.ObjectId,
     ownerName: String,
+    approvalStatus: { type: String, enum: ['pending', 'approved'], default: 'approved' },
+    approvedAt: { type: Date, default: null },
+    approvedBy: { type: String, default: '' },
     downloadCount: { type: Number, default: 0 },
     votes: { type: [VoteSchema], default: [] },
     comments: { type: [CommentSchema], default: [] },
@@ -312,6 +315,9 @@ const normalizeLocalDocument = (doc) => {
     _id: id,
     department: normalizeDepartment(doc.department),
     ownerId: String(doc.ownerId),
+    approvalStatus: doc.approvalStatus === 'pending' ? 'pending' : 'approved',
+    approvedAt: parseDate(doc.approvedAt),
+    approvedBy: doc.approvedBy || '',
     downloadCount: Number(doc.downloadCount || 0),
     originalName: doc.originalName || '',
     mimeType: doc.mimeType || '',
@@ -416,11 +422,11 @@ const sendMailOrThrow = async ({ to, subject, html }) => {
 const sendRegistrationCode = async ({ email, username, code }) => {
   await sendMailOrThrow({
     to: email,
-    subject: 'ITCORE verification code',
+    subject: 'ITDOC verification code',
     html: `
       <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 32px;">
         <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 18px; padding: 32px; border: 1px solid #e2e8f0;">
-          <p style="margin: 0 0 8px; color: #1d4ed8; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">ITCORE</p>
+          <p style="margin: 0 0 8px; color: #1d4ed8; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">ITDOC</p>
           <h1 style="margin: 0 0 16px; color: #0f172a; font-size: 28px;">Verification code</h1>
           <p style="margin: 0 0 20px; color: #475569; line-height: 1.7;">Hello ${username}, use this code to finish creating your account.</p>
           <div style="padding: 18px 24px; border-radius: 16px; background: #eff6ff; color: #1e3a8a; font-size: 34px; letter-spacing: 0.32em; font-weight: 800; text-align: center;">${code}</div>
@@ -434,11 +440,11 @@ const sendRegistrationCode = async ({ email, username, code }) => {
 const sendLoginCode = async ({ email, code }) => {
   await sendMailOrThrow({
     to: email,
-    subject: 'ITCORE login verification code',
+    subject: 'ITDOC login verification code',
     html: `
       <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 32px;">
         <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 18px; padding: 32px; border: 1px solid #e2e8f0;">
-          <p style="margin: 0 0 8px; color: #1d4ed8; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">ITCORE</p>
+          <p style="margin: 0 0 8px; color: #1d4ed8; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">ITDOC</p>
           <h1 style="margin: 0 0 16px; color: #0f172a; font-size: 28px;">Login code</h1>
           <p style="margin: 0 0 20px; color: #475569; line-height: 1.7;">Use this code to finish signing in.</p>
           <div style="padding: 18px 24px; border-radius: 16px; background: #eff6ff; color: #1e3a8a; font-size: 34px; letter-spacing: 0.32em; font-weight: 800; text-align: center;">${code}</div>
@@ -452,11 +458,11 @@ const sendLoginCode = async ({ email, code }) => {
 const sendResetCode = async ({ email, code }) => {
   await sendMailOrThrow({
     to: email,
-    subject: 'ITCORE password reset code',
+    subject: 'ITDOC password reset code',
     html: `
       <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 32px;">
         <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 18px; padding: 32px; border: 1px solid #e2e8f0;">
-          <p style="margin: 0 0 8px; color: #1d4ed8; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">ITCORE</p>
+          <p style="margin: 0 0 8px; color: #1d4ed8; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">ITDOC</p>
           <h1 style="margin: 0 0 16px; color: #0f172a; font-size: 28px;">Reset your password</h1>
           <p style="margin: 0 0 20px; color: #475569; line-height: 1.7;">Use the code below to choose a new password.</p>
           <div style="padding: 18px 24px; border-radius: 16px; background: #eff6ff; color: #1e3a8a; font-size: 34px; letter-spacing: 0.32em; font-weight: 800; text-align: center;">${code}</div>
@@ -561,7 +567,7 @@ const updateUserRecord = async (userId, updates) => {
   return normalizeLocalUser(db.users[index]);
 };
 
-const searchUsers = async (query) => {
+const searchUsers = async (query, viewer) => {
   if (isMongoReady()) {
     const safeQuery = escapeRegex(query);
     const users = await User.find(
@@ -576,8 +582,8 @@ const searchUsers = async (query) => {
         : {}
     ).select('-password -mfaCode -mfaExpires -resetPasswordCode -resetPasswordExpires');
 
-    const documents = await Document.find().select('ownerId createdAt updatedAt history');
-    return attachWeeklySentStats(users, documents);
+    const documents = await Document.find().select('ownerId createdAt updatedAt history approvalStatus');
+    return attachWeeklySentStats(users, documents, viewer);
   }
 
   const db = await readLocalDb();
@@ -595,7 +601,7 @@ const searchUsers = async (query) => {
     .map(({ password, mfaCode, mfaExpires, resetPasswordCode, resetPasswordExpires, ...user }) => user);
 
   const documents = db.documents.map(normalizeLocalDocument);
-  return attachWeeklySentStats(users, documents);
+  return attachWeeklySentStats(users, documents, viewer);
 };
 
 const promoteUserRecord = async (targetId) => {
@@ -714,7 +720,7 @@ const createDocumentRecord = async (payload) => {
 
   const db = await readLocalDb();
   const now = new Date().toISOString();
-  const record = {
+const record = {
     id: makeLocalId(),
     title: normalizedPayload.title,
     description: normalizedPayload.description,
@@ -727,6 +733,9 @@ const createDocumentRecord = async (payload) => {
     fileCategory: normalizedPayload.fileCategory,
     ownerId: String(normalizedPayload.ownerId),
     ownerName: normalizedPayload.ownerName,
+    approvalStatus: normalizedPayload.approvalStatus === 'pending' ? 'pending' : 'approved',
+    approvedAt: normalizedPayload.approvedAt || null,
+    approvedBy: normalizedPayload.approvedBy || '',
     downloadCount: Number(normalizedPayload.downloadCount || 0),
     votes: Array.isArray(normalizedPayload.votes) ? normalizedPayload.votes : [],
     comments: Array.isArray(normalizedPayload.comments) ? normalizedPayload.comments : [],
@@ -867,10 +876,24 @@ const buildUserDocumentSummaries = (documents, ownerId) =>
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
-const attachWeeklySentStats = (users, documents) =>
+const asDocumentRecord = (doc) =>
+  normalizeLocalDocument(typeof doc?.toObject === 'function' ? doc.toObject() : doc);
+
+const isDocumentApproved = (doc) => asDocumentRecord(doc)?.approvalStatus !== 'pending';
+
+const isDocumentManager = (user, doc) =>
+  Boolean(user) && (user.role === 'admin' || String(user.id || user._id) === String(doc.ownerId));
+
+const canApproveDocument = (user, doc) =>
+  Boolean(user) && user.role === 'admin' && asDocumentRecord(doc)?.approvalStatus === 'pending';
+
+const canViewDocument = (user, doc) => isDocumentApproved(doc) || isDocumentManager(user, doc);
+
+const attachWeeklySentStats = (users, documents, viewer) =>
   users.map((user) => {
     const ownerId = user._id || user.id;
-    const weeklySent = buildWeeklySentSeries(documents, ownerId);
+    const visibleDocuments = documents.filter((document) => canViewDocument(viewer, document));
+    const weeklySent = buildWeeklySentSeries(visibleDocuments, ownerId);
 
     return {
       ...(typeof user.toObject === 'function' ? user.toObject() : user),
@@ -880,10 +903,11 @@ const attachWeeklySentStats = (users, documents) =>
     };
   });
 
-const buildUserActivityPayload = (user, documents) => {
+const buildUserActivityPayload = (user, documents, viewer) => {
   const ownerId = user._id || user.id;
-  const allDocuments = buildUserDocumentSummaries(documents, ownerId);
-  const contributions = buildContributionBreakdown(documents, ownerId);
+  const visibleDocuments = documents.filter((document) => canViewDocument(viewer, document));
+  const allDocuments = buildUserDocumentSummaries(visibleDocuments, ownerId);
+  const contributions = buildContributionBreakdown(visibleDocuments, ownerId);
 
   return {
     user: publicUser(user),
@@ -893,17 +917,14 @@ const buildUserActivityPayload = (user, documents) => {
       comments: allDocuments.reduce((sum, document) => sum + Number(document.commentCount || 0), 0),
     },
     activity: {
-      week: buildRollingSentSeries(documents, ownerId, 7),
-      twoWeeks: buildRollingSentSeries(documents, ownerId, 14),
-      month: buildRollingSentSeries(documents, ownerId, 30),
+      week: buildRollingSentSeries(visibleDocuments, ownerId, 7),
+      twoWeeks: buildRollingSentSeries(visibleDocuments, ownerId, 14),
+      month: buildRollingSentSeries(visibleDocuments, ownerId, 30),
     },
     contributions,
     documents: allDocuments,
   };
 };
-
-const isDocumentManager = (user, doc) =>
-  Boolean(user) && (user.role === 'admin' || String(user.id || user._id) === String(doc.ownerId));
 
 const getDocumentScore = (doc) =>
   (Array.isArray(doc.votes) ? doc.votes : []).reduce((sum, vote) => sum + Number(vote.value || 0), 0);
@@ -925,7 +946,9 @@ const serializeDocument = (doc, viewer, { includeComments = true } = {}) => {
     score: getDocumentScore(normalized),
     viewerVote: getViewerVote(normalized, viewer?.id || viewer?._id),
     commentCount: normalized.comments.length,
+    isPending: normalized.approvalStatus === 'pending',
     canManage: isDocumentManager(viewer, normalized),
+    canApprove: canApproveDocument(viewer, normalized),
     canPreview: isPreviewableFileCategory(normalized.fileCategory),
     canEditContent:
       isDocumentManager(viewer, normalized) && isEditableFileCategory(normalized.fileCategory),
@@ -1359,10 +1382,12 @@ const storage = new CloudinaryStorage({
 });
 
 const upload = multer({ storage });
+const DOCUMENT_TITLE_MAX_LENGTH = 15;
 
 app.get('/api/documents', protect, async (req, res) => {
   const docs = await listDocuments();
-  res.json(docs.map((doc) => serializeDocument(doc, req.user, { includeComments: false })));
+  const visibleDocs = docs.filter((doc) => canViewDocument(req.user, doc));
+  res.json(visibleDocs.map((doc) => serializeDocument(doc, req.user, { includeComments: false })));
 });
 
 app.get('/api/documents/:docId', protect, async (req, res) => {
@@ -1370,6 +1395,10 @@ app.get('/api/documents/:docId', protect, async (req, res) => {
     const doc = await findDocumentById(req.params.docId);
     if (!doc) {
       return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    if (!canViewDocument(req.user, doc)) {
+      return res.status(403).json({ message: 'This document is still pending admin approval.' });
     }
 
     res.json(serializeDocument(doc, req.user));
@@ -1385,6 +1414,10 @@ app.get('/api/documents/:docId/text', protect, async (req, res) => {
 
     if (!normalizedDoc) {
       return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    if (!canViewDocument(req.user, normalizedDoc)) {
+      return res.status(403).json({ message: 'This document is still pending admin approval.' });
     }
 
     if (normalizedDoc.fileCategory !== 'text') {
@@ -1409,6 +1442,17 @@ app.post('/api/upload', protect, upload.single('file'), async (req, res) => {
       return res.status(400).json({ message: 'Please choose a file to upload.' });
     }
 
+    const title = String(req.body.title || '').trim();
+    if (!title) {
+      return res.status(400).json({ message: 'Title is required.' });
+    }
+
+    if (title.length > DOCUMENT_TITLE_MAX_LENGTH) {
+      return res
+        .status(400)
+        .json({ message: `Title must be ${DOCUMENT_TITLE_MAX_LENGTH} characters or less.` });
+    }
+
     const authorName = req.user.name || req.user.username || 'Unknown user';
     const resourceType = req.file.resource_type || req.file.resourceType || 'raw';
     const mimeType = req.file.mimetype || '';
@@ -1428,6 +1472,9 @@ app.post('/api/upload', protect, upload.single('file'), async (req, res) => {
       }),
       ownerId: req.user.id,
       ownerName: authorName,
+      approvalStatus: 'pending',
+      approvedAt: null,
+      approvedBy: '',
       votes: [],
       comments: [],
       history: [
@@ -1446,6 +1493,31 @@ app.post('/api/upload', protect, upload.single('file'), async (req, res) => {
   }
 });
 
+app.post('/api/documents/:docId/approve', protect, async (req, res) => {
+  try {
+    const doc = await findDocumentById(req.params.docId);
+    const normalizedDoc = normalizeLocalDocument(typeof doc?.toObject === 'function' ? doc.toObject() : doc);
+
+    if (!normalizedDoc) {
+      return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    if (!canApproveDocument(req.user, normalizedDoc)) {
+      return res.status(403).json({ message: 'Only an admin can approve this pending document.' });
+    }
+
+    const updatedDoc = await updateDocumentRecord(normalizedDoc._id || normalizedDoc.id, {
+      approvalStatus: 'approved',
+      approvedAt: new Date(),
+      approvedBy: req.user.name || req.user.username || 'Admin',
+    });
+
+    res.json(serializeDocument(updatedDoc, req.user));
+  } catch (error) {
+    res.status(500).json({ message: 'The document could not be approved right now.' });
+  }
+});
+
 app.patch('/api/documents/:docId', protect, async (req, res) => {
   try {
     const title = String(req.body.title || '').trim();
@@ -1453,6 +1525,12 @@ app.patch('/api/documents/:docId', protect, async (req, res) => {
 
     if (!title || !description) {
       return res.status(400).json({ message: 'Title and description are both required.' });
+    }
+
+    if (title.length > DOCUMENT_TITLE_MAX_LENGTH) {
+      return res
+        .status(400)
+        .json({ message: `Title must be ${DOCUMENT_TITLE_MAX_LENGTH} characters or less.` });
     }
 
     const doc = await findDocumentById(req.params.docId);
@@ -1621,6 +1699,10 @@ app.post('/api/documents/:docId/vote', protect, async (req, res) => {
       return res.status(404).json({ message: 'Document not found.' });
     }
 
+    if (!canViewDocument(req.user, normalizedDoc)) {
+      return res.status(403).json({ message: 'This document is still pending admin approval.' });
+    }
+
     const nextVotes = normalizedDoc.votes.filter(
       (entry) => String(entry.userId) !== String(req.user.id)
     );
@@ -1650,6 +1732,10 @@ app.post('/api/documents/:docId/comments', protect, async (req, res) => {
       return res.status(404).json({ message: 'Document not found.' });
     }
 
+    if (!canViewDocument(req.user, normalizedDoc)) {
+      return res.status(403).json({ message: 'This document is still pending admin approval.' });
+    }
+
     const comment = {
       id: makeLocalId(),
       userId: String(req.user.id),
@@ -1672,6 +1758,10 @@ app.get('/api/download/:docId', protect, async (req, res) => {
   try {
     const doc = await findDocumentById(req.params.docId);
     if (!doc) return res.status(404).json({ message: 'Document not found.' });
+
+    if (!canViewDocument(req.user, doc)) {
+      return res.status(403).json({ message: 'This document is still pending admin approval.' });
+    }
 
     await updateDocumentRecord(doc._id || doc.id, {
       downloadCount: Number(doc.downloadCount || 0) + 1,
@@ -1698,7 +1788,7 @@ app.get('/api/users/:userId/activity', protect, async (req, res) => {
     }
 
     const documents = await listDocuments();
-    res.json(buildUserActivityPayload(user, documents));
+    res.json(buildUserActivityPayload(user, documents, req.user));
   } catch (error) {
     res.status(500).json({ message: 'The staff activity could not be loaded right now.' });
   }
@@ -1706,7 +1796,7 @@ app.get('/api/users/:userId/activity', protect, async (req, res) => {
 
 app.get('/api/users/search', protect, async (req, res) => {
   const query = String(req.query.q || '').trim();
-  const users = await searchUsers(query);
+  const users = await searchUsers(query, req.user);
   res.json(users);
 });
 
