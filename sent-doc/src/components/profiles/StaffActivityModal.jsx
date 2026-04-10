@@ -2,7 +2,7 @@ import React from 'react';
 import { Line, Pie } from 'react-chartjs-2';
 import { Link } from 'react-router-dom';
 import { FiActivity, FiBarChart2, FiPieChart, FiTrendingUp, FiX } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 const RANGE_OPTIONS = ['week', 'twoWeeks', 'month'];
 

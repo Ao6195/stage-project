@@ -1,6 +1,6 @@
 import React from 'react';
 import { LOGIN_VIEW, REGISTER_VIEW } from '../../constants/authViews';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function AuthTabs({ view, onSwitch }) {
   const { t } = useLanguage();

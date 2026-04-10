@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiShield } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function PromotionModal({ target, promoting, onClose, onConfirm }) {
   const { t } = useLanguage();

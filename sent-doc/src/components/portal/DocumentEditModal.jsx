@@ -1,9 +1,10 @@
 import React from 'react';
 import { FiEdit3 } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function DocumentEditModal({
   editForm,
+  categories,
   savingEdit,
   onChange,
   onClose,
@@ -35,6 +36,22 @@ export default function DocumentEditModal({
               onChange={(event) => onChange('description', event.target.value)}
               required
             />
+          </label>
+
+          <label className="modal-field">
+            <span>{t('category')}</span>
+            <select
+              className="modal-select"
+              value={editForm.department}
+              onChange={(event) => onChange('department', event.target.value)}
+              required
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
           </label>
 
           <div className="modal-actions">

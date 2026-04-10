@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiCheck, FiEdit3, FiEye, FiFileText, FiMessageSquare, FiTrash2 } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function DocumentCard({ doc, approving, onEdit, onDelete, onApprove }) {
   const { t } = useLanguage();
@@ -14,12 +14,13 @@ export default function DocumentCard({ doc, approving, onEdit, onDelete, onAppro
           {doc.canApprove && (
             <button
               type="button"
-              className="ghost-btn card-mini-btn approve-btn"
+              className="ghost-btn card-mini-btn admin-icon-btn approve-btn"
               onClick={() => onApprove(doc)}
               disabled={approving}
+              aria-label={approving ? t('saving') : t('approve')}
+              title={approving ? t('saving') : t('approve')}
             >
               <FiCheck />
-              <span>{approving ? t('saving') : t('approve')}</span>
             </button>
           )}
         </div>
@@ -61,13 +62,23 @@ export default function DocumentCard({ doc, approving, onEdit, onDelete, onAppro
 
           {doc.canManage && (
             <>
-              <button type="button" className="ghost-btn card-mini-btn" onClick={() => onEdit(doc)}>
+              <button
+                type="button"
+                className="ghost-btn card-mini-btn admin-icon-btn"
+                onClick={() => onEdit(doc)}
+                aria-label={t('modify')}
+                title={t('modify')}
+              >
                 <FiEdit3 />
-                <span>{t('modify')}</span>
               </button>
-              <button type="button" className="danger-btn card-mini-btn" onClick={() => onDelete(doc)}>
+              <button
+                type="button"
+                className="danger-btn card-mini-btn admin-icon-btn"
+                onClick={() => onDelete(doc)}
+                aria-label={t('delete')}
+                title={t('delete')}
+              >
                 <FiTrash2 />
-                <span>{t('delete')}</span>
               </button>
             </>
           )}

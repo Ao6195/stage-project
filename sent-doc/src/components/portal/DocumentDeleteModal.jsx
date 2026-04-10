@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiTrash2 } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function DocumentDeleteModal({ target, deleting, onClose, onConfirm }) {
   const { t } = useLanguage();

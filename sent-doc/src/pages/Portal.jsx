@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import CategoryManager from '../components/portal/CategoryManager';
 import DocumentCard from '../components/portal/DocumentCard';
 import DocumentDeleteModal from '../components/portal/DocumentDeleteModal';
 import DocumentEditModal from '../components/portal/DocumentEditModal';
 import UploadAssetForm from '../components/portal/UploadAssetForm';
 import { API_BASE, getAuthConfig } from '../lib/api';
-import { useLanguage } from '../lib/i18n';
+import { useLanguage } from '../lib/useLanguage';
 
-const DEPARTMENTS = ['Exploitation', 'Data', 'Security'];
 const SORT_OPTIONS = ['likes', 'newest', 'oldest'];
 
 const getDepartmentScore = (docs, department) =>
@@ -18,6 +18,7 @@ const getDepartmentScore = (docs, department) =>
 export default function Portal() {
   const { t } = useLanguage();
   const [docs, setDocs] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [activeDept, setActiveDept] = useState('Security');
   const [sortMode, setSortMode] = useState('likes');
   const [loading, setLoading] = useState(true);
@@ -26,18 +27,21 @@ export default function Portal() {
   const [selectedFileName, setSelectedFileName] = useState('');
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', description: '' });
+  const [editForm, setEditForm] = useState({ title: '', description: '', department: '' });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [approvingId, setApprovingId] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [updatingCategoryId, setUpdatingCategoryId] = useState('');
+  const [deletingCategoryId, setDeletingCategoryId] = useState('');
 
   const rankedDepartments = useMemo(
     () =>
-      [...DEPARTMENTS].sort((left, right) => {
-        const scoreDiff = getDepartmentScore(docs, right) - getDepartmentScore(docs, left);
-        return scoreDiff !== 0 ? scoreDiff : left.localeCompare(right);
+      [...categories].sort((left, right) => {
+        const scoreDiff = getDepartmentScore(docs, right.name) - getDepartmentScore(docs, left.name);
+        return scoreDiff !== 0 ? scoreDiff : left.name.localeCompare(right.name);
       }),
-    [docs]
+    [categories, docs]
   );
 
   const activeDocs = useMemo(
@@ -64,17 +68,21 @@ export default function Portal() {
     [activeDept, docs, sortMode]
   );
 
-  useEffect(() => {
-    fetchDocs();
-  }, []);
-
-  useEffect(() => {
-    if (!rankedDepartments.includes(activeDept) && rankedDepartments.length > 0) {
-      setActiveDept(rankedDepartments[0]);
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/categories`, getAuthConfig());
+      setCategories(response.data);
+      setActiveDept((currentDept) =>
+        response.data?.some((category) => category.name === currentDept)
+          ? currentDept
+          : response.data?.[0]?.name || currentDept
+      );
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('categories_load_failed'));
     }
-  }, [activeDept, rankedDepartments]);
+  }, [t]);
 
-  const fetchDocs = async () => {
+  const fetchDocs = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -86,7 +94,18 @@ export default function Portal() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchDocs();
+  }, [fetchCategories, fetchDocs]);
+
+  useEffect(() => {
+    if (!rankedDepartments.some((category) => category.name === activeDept) && rankedDepartments.length > 0) {
+      setActiveDept(rankedDepartments[0].name);
+    }
+  }, [activeDept, rankedDepartments]);
 
   const handleUpload = async (event) => {
     event.preventDefault();
@@ -95,7 +114,6 @@ export default function Portal() {
 
     try {
       const formData = new FormData(event.target);
-      formData.append('department', activeDept);
       const response = await axios.post(`${API_BASE}/upload`, formData, getAuthConfig());
       event.target.reset();
       setSelectedFileName(t('no_file_selected'));
@@ -158,7 +176,75 @@ export default function Portal() {
     setEditForm({
       title: doc.title || '',
       description: doc.description || '',
+      department: doc.department || activeDept,
     });
+  };
+
+  const handleCategoryCreate = async (name) => {
+    setCreatingCategory(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axios.post(`${API_BASE}/categories`, { name }, getAuthConfig());
+      setCategories(response.data);
+      setActiveDept(name.trim());
+      setSuccess(t('category_created_successfully'));
+      return true;
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('category_create_failed'));
+      return false;
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const handleCategoryRename = async (category, name) => {
+    setUpdatingCategoryId(category.id);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axios.patch(
+        `${API_BASE}/categories/${encodeURIComponent(category.id)}`,
+        { name },
+        getAuthConfig()
+      );
+      setCategories(response.data);
+      if (activeDept === category.name) setActiveDept(name.trim());
+      setSuccess(t('category_renamed_successfully'));
+      fetchDocs();
+      return true;
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('category_rename_failed'));
+      return false;
+    } finally {
+      setUpdatingCategoryId('');
+    }
+  };
+
+  const handleCategoryDelete = async (category) => {
+    const replacement = categories.find((entry) => entry.id !== category.id)?.name;
+    if (!replacement) return;
+
+    setDeletingCategoryId(category.id);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axios.delete(`${API_BASE}/categories/${encodeURIComponent(category.id)}`, {
+        ...getAuthConfig(),
+        data: { replacement },
+      });
+      setCategories(response.data.categories);
+      if (activeDept === category.name) setActiveDept(replacement);
+      setSuccess(t('category_deleted_successfully', { name: category.name, replacement }));
+      fetchDocs();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('category_delete_failed'));
+    } finally {
+      setDeletingCategoryId('');
+    }
   };
 
   const handleApprove = async (doc) => {
@@ -189,7 +275,10 @@ export default function Portal() {
 
         <UploadAssetForm
           selectedFileName={selectedFileName}
+          categories={rankedDepartments}
+          selectedCategory={activeDept}
           onSubmit={handleUpload}
+          onCategoryChange={setActiveDept}
           onFileChange={(event) =>
             setSelectedFileName(event.target.files?.[0]?.name || t('no_file_selected'))
           }
@@ -207,16 +296,28 @@ export default function Portal() {
           </span>
         </header>
 
-        <div className="dept-tabs polished-tabs">
-          {rankedDepartments.map((dept) => (
-            <button
-              key={dept}
-              className={`tab-btn ${activeDept === dept ? 'active' : ''}`}
-              onClick={() => setActiveDept(dept)}
-            >
-              {dept}
-            </button>
-          ))}
+        <div className="category-bar">
+          <div className="dept-tabs polished-tabs">
+            {rankedDepartments.map((category) => (
+              <button
+                key={category.id}
+                className={`tab-btn ${activeDept === category.name ? 'active' : ''}`}
+                onClick={() => setActiveDept(category.name)}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+
+          <CategoryManager
+            categories={categories}
+            creatingCategory={creatingCategory}
+            updatingCategoryId={updatingCategoryId}
+            deletingCategoryId={deletingCategoryId}
+            onCreate={handleCategoryCreate}
+            onRename={handleCategoryRename}
+            onDelete={handleCategoryDelete}
+          />
         </div>
 
         <div className="sort-toolbar">
@@ -265,6 +366,7 @@ export default function Portal() {
       {editTarget && (
         <DocumentEditModal
           editForm={editForm}
+          categories={categories}
           savingEdit={savingEdit}
           onChange={(field, value) =>
             setEditForm((current) => ({ ...current, [field]: value }))

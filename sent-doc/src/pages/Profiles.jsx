@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import axios from 'axios';
 import {
   Chart as ChartJS,
@@ -11,12 +11,13 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiTrash2 } from 'react-icons/fi';
+import ConfirmModal from '../components/common/ConfirmModal';
 import ProfileCard from '../components/profiles/ProfileCard';
 import PromotionModal from '../components/profiles/PromotionModal';
 import StaffActivityModal from '../components/profiles/StaffActivityModal';
 import { API_BASE, getAuthConfig } from '../lib/api';
-import { useLanguage } from '../lib/i18n';
+import { useLanguage } from '../lib/useLanguage';
 
 ChartJS.register(
   CategoryScale,
@@ -33,10 +34,13 @@ export default function Profiles() {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [promoteTarget, setPromoteTarget] = useState(null);
   const [promoting, setPromoting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingUserId, setDeletingUserId] = useState('');
   const [viewTarget, setViewTarget] = useState(null);
   const [viewData, setViewData] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
@@ -55,10 +59,6 @@ export default function Profiles() {
     [users]
   );
 
-  useEffect(() => {
-    fetchUsers('');
-  }, []);
-
   const fetchUsers = async (searchTerm = query) => {
     setError('');
     setSuccess('');
@@ -75,7 +75,16 @@ export default function Profiles() {
   };
 
   const handleSearch = async () => {
-    fetchUsers(query);
+    const searchTerm = query.trim();
+
+    if (!searchTerm) {
+      setUsers([]);
+      setHasSearched(false);
+      return;
+    }
+
+    setHasSearched(true);
+    fetchUsers(searchTerm);
   };
 
   const promoteUser = async () => {
@@ -98,6 +107,28 @@ export default function Profiles() {
       setError(requestError.response?.data?.message || t('user_could_not_be_promoted'));
     } finally {
       setPromoting(false);
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!deleteTarget) return;
+
+    const targetId = deleteTarget._id || deleteTarget.id;
+    setError('');
+    setSuccess('');
+    setDeletingUserId(String(targetId));
+
+    try {
+      await axios.delete(`${API_BASE}/admin/users/${targetId}`, getAuthConfig());
+      setUsers((currentUsers) =>
+        currentUsers.filter((user) => String(user._id || user.id) !== String(targetId))
+      );
+      setSuccess(t('user_deleted_successfully', { name: deleteTarget.name || deleteTarget.username }));
+      setDeleteTarget(null);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('user_delete_failed'));
+    } finally {
+      setDeletingUserId('');
     }
   };
 
@@ -132,23 +163,41 @@ export default function Profiles() {
             <h1>{t('team_profiles')}</h1>
           </div>
 
-          <div className="search-card">
+          <form
+            className="search-card"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSearch();
+            }}
+          >
             <input
               placeholder={t('search_staff')}
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                const nextQuery = event.target.value;
+                setQuery(nextQuery);
+
+                if (!nextQuery.trim()) {
+                  setUsers([]);
+                  setHasSearched(false);
+                }
+              }}
             />
-            <button type="button" className="main-btn search-btn" onClick={handleSearch}>
+            <button type="submit" className="main-btn search-btn">
               <FiSearch />
               <span>{t('search')}</span>
             </button>
-          </div>
+          </form>
         </section>
 
         {success && <div className="feedback-panel success inline-feedback">{success}</div>}
         {error && <div className="feedback-panel error inline-feedback">{error}</div>}
 
-        {sortedUsers.length === 0 ? (
+        {!hasSearched ? (
+          <section className="surface-card empty-state-card">
+            <h3>{t('run_search_copy')}</h3>
+          </section>
+        ) : sortedUsers.length === 0 ? (
           <section className="surface-card empty-state-card">
             <h3>{t('no_profiles_yet')}</h3>
           </section>
@@ -159,8 +208,11 @@ export default function Profiles() {
                 key={user._id || user.id}
                 user={user}
                 canPromote={Boolean(me?.role === 'admin' && user.role !== 'admin')}
+                canDelete={Boolean(me?.role === 'admin' && user.role !== 'admin')}
+                deleting={deletingUserId === String(user._id || user.id)}
                 onView={openViewModal}
                 onPromote={setPromoteTarget}
+                onDelete={setDeleteTarget}
               />
             ))}
           </div>
@@ -173,6 +225,21 @@ export default function Profiles() {
           promoting={promoting}
           onClose={() => setPromoteTarget(null)}
           onConfirm={promoteUser}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title={t('delete_user')}
+          copy={t('delete_user_copy')}
+          meta={<span>{deleteTarget.name || deleteTarget.username}</span>}
+          confirmLabel={t('delete')}
+          busyLabel={t('deleting')}
+          busy={deletingUserId === String(deleteTarget._id || deleteTarget.id)}
+          confirmClassName="danger-btn modal-confirm-btn"
+          ConfirmIcon={FiTrash2}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={deleteUser}
         />
       )}
 

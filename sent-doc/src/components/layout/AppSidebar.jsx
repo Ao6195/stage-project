@@ -10,7 +10,8 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { THEMES } from '../../constants/themes';
-import { LANGUAGES, useLanguage } from '../../lib/i18n';
+import { LANGUAGES } from '../../constants/languages';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function AppSidebar({
   user,

@@ -1,6 +1,6 @@
 import React from 'react';
 import AuthHeroVisual from './AuthHeroVisual';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function AuthHero() {
   const { t } = useLanguage();

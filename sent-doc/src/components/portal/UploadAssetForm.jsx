@@ -1,11 +1,14 @@
 import React from 'react';
 import { FiUploadCloud } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function UploadAssetForm({
   selectedFileName,
+  categories,
+  selectedCategory,
   onSubmit,
   onFileChange,
+  onCategoryChange,
 }) {
   const { t } = useLanguage();
 
@@ -20,6 +23,23 @@ export default function UploadAssetForm({
           maxLength={15}
           required
         />
+      </div>
+
+      <div className="upload-field">
+        <select
+          name="department"
+          className="category-select"
+          aria-label={t('category')}
+          value={selectedCategory}
+          onChange={(event) => onCategoryChange(event.target.value)}
+          required
+        >
+          {categories.map((category) => (
+            <option key={category.id} value={category.name}>
+              {category.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="upload-field upload-file-field">

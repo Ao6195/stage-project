@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiCheck, FiDownloadCloud, FiEye, FiFileText, FiMessageSquare, FiRefreshCw, FiUser, FiX } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function DocumentHeaderCard({ doc, openingFile, approving, onApprove, onOpenOriginal }) {
   const { t } = useLanguage();

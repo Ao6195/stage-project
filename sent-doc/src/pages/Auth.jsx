@@ -14,7 +14,7 @@ import {
   REGISTER_VIEW,
 } from '../constants/authViews';
 import { AUTH_API } from '../lib/api';
-import { useLanguage } from '../lib/i18n';
+import { useLanguage } from '../lib/useLanguage';
 
 const initialLoginForm = {
   identifier: '',

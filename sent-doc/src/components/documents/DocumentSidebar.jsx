@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiEdit3, FiThumbsDown, FiThumbsUp, FiUploadCloud } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function DocumentSidebar({
   doc,

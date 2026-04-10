@@ -16,25 +16,48 @@ const { OAuth2Client } = require('google-auth-library');
 mongoose.set('bufferCommands', false);
 
 const app = express();
-const PORT = Number(process.env.PORT) || 5000;
+const PORT = Number(process.env.PORT) || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'development-secret';
 const REGISTRATION_CODE_LIFETIME_MS = 10 * 60 * 1000;
 const LOGIN_CODE_LIFETIME_MS = 5 * 60 * 1000;
 const RESET_CODE_LIFETIME_MS = 10 * 60 * 1000;
-const LOCAL_DB_PATH = path.join(__dirname, 'database.json');
 const GOOGLE_CLIENT_ID =
   typeof process.env.GOOGLE_CLIENT_ID === 'string' ? process.env.GOOGLE_CLIENT_ID.trim() : '';
 const DEPARTMENT_OPTIONS = ['Exploitation', 'Data', 'Security'];
+const DEFAULT_CATEGORY_NAMES = DEPARTMENT_OPTIONS;
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif']);
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'm4v', 'avi', 'mkv', 'mpeg']);
 const TEXT_EXTENSIONS = new Set(['txt', 'md', 'json', 'csv', 'log', 'xml', 'html', 'css', 'js', 'jsx', 'ts', 'tsx']);
 const DOCUMENT_EXTENSIONS = new Set(['pdf']);
 
 let mongoConnected = false;
+let localMemoryDb = null;
 const mongoUri = typeof process.env.MONGO_URI === 'string' ? process.env.MONGO_URI.trim() : '';
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
+const allowedOrigins = new Set([
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
+  'http://localhost:5001',
+  'http://127.0.0.1:5001',
+]);
 
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('Origin not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+app.options(/.*/, cors());
 app.use(express.json());
 
 if (mongoUri) {
@@ -46,10 +69,10 @@ if (mongoUri) {
     })
     .catch((error) => {
       mongoConnected = false;
-      console.error('MongoDB unavailable, using local database.json:', error.message);
+      console.error('MongoDB unavailable, using in-memory local data:', error.message);
     });
 } else {
-  console.warn('MongoDB unavailable, using local database.json: MONGO_URI is not configured.');
+  console.warn('MongoDB unavailable, using in-memory local data: MONGO_URI is not configured.');
 }
 
 cloudinary.config({
@@ -109,6 +132,7 @@ const CommentSchema = new mongoose.Schema(
     userName: { type: String, required: true },
     text: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
   },
   { _id: false }
 );
@@ -157,6 +181,7 @@ const ensureLocalDbShape = (data = {}) => ({
   users: Array.isArray(data.users) ? data.users : [],
   documents: Array.isArray(data.documents) ? data.documents : [],
   pendingRegistrations: Array.isArray(data.pendingRegistrations) ? data.pendingRegistrations : [],
+  categories: Array.isArray(data.categories) ? data.categories : DEFAULT_CATEGORY_NAMES,
 });
 
 const makeLocalId = () => `${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
@@ -180,20 +205,15 @@ const getFileExtension = (...values) => {
   return '';
 };
 
+const normalizeCategoryName = (value = '') =>
+  String(value)
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 40);
+
 const normalizeDepartment = (value = '') => {
-  const normalized = String(value).trim().toLowerCase();
-
-  if (normalized.includes('data')) return 'Data';
-  if (normalized.includes('security')) return 'Security';
-  if (
-    normalized.includes('exploit') ||
-    normalized.includes('system') ||
-    normalized.includes('development')
-  ) {
-    return 'Exploitation';
-  }
-
-  return 'Security';
+  const categoryName = normalizeCategoryName(value);
+  return categoryName || DEFAULT_CATEGORY_NAMES[0];
 };
 
 const formatShortDateLabel = (value) =>
@@ -245,12 +265,14 @@ const normalizeComment = (comment) => {
   if (!comment || !comment.text) return null;
 
   const createdAt = parseDate(comment.createdAt) || new Date();
+  const updatedAt = parseDate(comment.updatedAt) || createdAt;
   return {
     id: String(comment.id || comment._id || `${createdAt.getTime()}`),
     userId: String(comment.userId || ''),
     userName: comment.userName || 'Member',
-    text: String(comment.text),
+    text: String(comment.text).trim(),
     createdAt,
+    updatedAt,
   };
 };
 
@@ -337,24 +359,51 @@ const normalizeLocalDocument = (doc) => {
   };
 };
 
-const readLocalDb = async () => {
-  try {
-    const raw = await fs.readFile(LOCAL_DB_PATH, 'utf8');
-    return ensureLocalDbShape(JSON.parse(raw));
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      const initial = ensureLocalDbShape();
-      await fs.writeFile(LOCAL_DB_PATH, JSON.stringify(initial, null, 2));
-      return initial;
-    }
-
-    throw error;
+const getLocalMemoryDb = () => {
+  if (!localMemoryDb) {
+    localMemoryDb = ensureLocalDbShape();
   }
+
+  return localMemoryDb;
 };
+
+const readLocalDb = async () => getLocalMemoryDb();
 
 const writeLocalDb = async (db) => {
-  await fs.writeFile(LOCAL_DB_PATH, JSON.stringify(ensureLocalDbShape(db), null, 2));
+  localMemoryDb = ensureLocalDbShape(db);
 };
+
+const normalizeCategoryList = (categories = []) => {
+  const names = categories
+    .map((category) => normalizeCategoryName(typeof category === 'string' ? category : category?.name))
+    .filter(Boolean);
+  return [...new Set(names.length ? names : DEFAULT_CATEGORY_NAMES)];
+};
+
+const listCategoryNames = async () => {
+  const db = await readLocalDb();
+  const categories = normalizeCategoryList(db.categories);
+
+  if (JSON.stringify(categories) !== JSON.stringify(db.categories)) {
+    await writeLocalDb({ ...db, categories });
+  }
+
+  return categories;
+};
+
+const saveCategoryNames = async (categories) => {
+  const db = await readLocalDb();
+  const nextCategories = normalizeCategoryList(categories);
+  await writeLocalDb({ ...db, categories: nextCategories });
+  return nextCategories;
+};
+
+const serializeCategories = (categories, viewer) =>
+  normalizeCategoryList(categories).map((name) => ({
+    id: name,
+    name,
+    canManage: viewer?.role === 'admin',
+  }));
 
 const assignRole = (email) =>
   normalizeEmail(email) === 'adamouchkouk16@gmail.com' ? 'admin' : 'user';
@@ -567,6 +616,19 @@ const updateUserRecord = async (userId, updates) => {
   return normalizeLocalUser(db.users[index]);
 };
 
+const deleteUserRecord = async (userId) => {
+  if (isMongoReady()) return User.findByIdAndDelete(userId);
+
+  const db = await readLocalDb();
+  const index = db.users.findIndex((user) => String(user.id || user._id) === String(userId));
+
+  if (index === -1) return null;
+
+  const [deletedUser] = db.users.splice(index, 1);
+  await writeLocalDb(db);
+  return normalizeLocalUser(deletedUser);
+};
+
 const searchUsers = async (query, viewer) => {
   if (isMongoReady()) {
     const safeQuery = escapeRegex(query);
@@ -759,7 +821,12 @@ const findDocumentById = async (docId) => {
 };
 
 const updateDocumentRecord = async (docId, updates) => {
-  if (isMongoReady()) return Document.findByIdAndUpdate(docId, updates, { new: true });
+  const normalizedUpdates = { ...updates };
+  if (updates.department !== undefined) {
+    normalizedUpdates.department = normalizeDepartment(updates.department);
+  }
+
+  if (isMongoReady()) return Document.findByIdAndUpdate(docId, normalizedUpdates, { new: true });
 
   const db = await readLocalDb();
   const index = db.documents.findIndex((doc) => String(doc.id || doc._id) === String(docId));
@@ -768,7 +835,7 @@ const updateDocumentRecord = async (docId, updates) => {
 
   db.documents[index] = {
     ...db.documents[index],
-    ...updates,
+    ...normalizedUpdates,
     updatedAt: new Date().toISOString(),
   };
 
@@ -884,6 +951,24 @@ const isDocumentApproved = (doc) => asDocumentRecord(doc)?.approvalStatus !== 'p
 const isDocumentManager = (user, doc) =>
   Boolean(user) && (user.role === 'admin' || String(user.id || user._id) === String(doc.ownerId));
 
+const canEditComment = (user, comment) =>
+  Boolean(user) && String(user.id || user._id) === String(comment.userId);
+
+const canDeleteComment = (user, comment) =>
+  Boolean(user) && (user.role === 'admin' || canEditComment(user, comment));
+
+const serializeComment = (comment, viewer) => {
+  const normalized = normalizeComment(comment);
+  if (!normalized) return null;
+
+  return {
+    ...normalized,
+    canEdit: canEditComment(viewer, normalized),
+    canDelete: canDeleteComment(viewer, normalized),
+    isEdited: normalized.updatedAt.getTime() > normalized.createdAt.getTime(),
+  };
+};
+
 const canApproveDocument = (user, doc) =>
   Boolean(user) && user.role === 'admin' && asDocumentRecord(doc)?.approvalStatus === 'pending';
 
@@ -946,6 +1031,7 @@ const serializeDocument = (doc, viewer, { includeComments = true } = {}) => {
     score: getDocumentScore(normalized),
     viewerVote: getViewerVote(normalized, viewer?.id || viewer?._id),
     commentCount: normalized.comments.length,
+    comments: normalized.comments.map((comment) => serializeComment(comment, viewer)).filter(Boolean),
     isPending: normalized.approvalStatus === 'pending',
     canManage: isDocumentManager(viewer, normalized),
     canApprove: canApproveDocument(viewer, normalized),
@@ -1032,6 +1118,14 @@ const protect = (req, res, next) => {
   } catch (error) {
     res.status(401).json({ message: 'Unauthorized' });
   }
+};
+
+const requireAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  next();
 };
 
 app.post('/api/auth/register/request-code', async (req, res) => {
@@ -1436,6 +1530,118 @@ app.get('/api/documents/:docId/text', protect, async (req, res) => {
   }
 });
 
+app.get('/api/categories', protect, async (req, res) => {
+  try {
+    const categories = await listCategoryNames();
+    res.json(serializeCategories(categories, req.user));
+  } catch (error) {
+    res.status(500).json({ message: 'Categories could not be loaded right now.' });
+  }
+});
+
+app.post('/api/categories', protect, requireAdmin, async (req, res) => {
+  try {
+    const name = normalizeCategoryName(req.body.name);
+
+    if (!name) {
+      return res.status(400).json({ message: 'Category name is required.' });
+    }
+
+    const categories = await listCategoryNames();
+    if (categories.some((category) => category.toLowerCase() === name.toLowerCase())) {
+      return res.status(400).json({ message: 'This category already exists.' });
+    }
+
+    const nextCategories = await saveCategoryNames([...categories, name]);
+    res.status(201).json(serializeCategories(nextCategories, req.user));
+  } catch (error) {
+    res.status(500).json({ message: 'Category could not be created right now.' });
+  }
+});
+
+app.patch('/api/categories/:categoryId', protect, requireAdmin, async (req, res) => {
+  try {
+    const currentName = normalizeCategoryName(decodeURIComponent(req.params.categoryId));
+    const nextName = normalizeCategoryName(req.body.name);
+
+    if (!currentName || !nextName) {
+      return res.status(400).json({ message: 'Category name is required.' });
+    }
+
+    const categories = await listCategoryNames();
+    if (!categories.some((category) => category.toLowerCase() === currentName.toLowerCase())) {
+      return res.status(404).json({ message: 'Category not found.' });
+    }
+
+    if (
+      categories.some(
+        (category) =>
+          category.toLowerCase() === nextName.toLowerCase() &&
+          category.toLowerCase() !== currentName.toLowerCase()
+      )
+    ) {
+      return res.status(400).json({ message: 'This category already exists.' });
+    }
+
+    const nextCategories = await saveCategoryNames(
+      categories.map((category) =>
+        category.toLowerCase() === currentName.toLowerCase() ? nextName : category
+      )
+    );
+    const docs = await listDocuments();
+    await Promise.all(
+      docs
+        .filter((doc) => String(doc.department).toLowerCase() === currentName.toLowerCase())
+        .map((doc) => updateDocumentRecord(doc._id || doc.id, { department: nextName }))
+    );
+
+    res.json(serializeCategories(nextCategories, req.user));
+  } catch (error) {
+    res.status(500).json({ message: 'Category could not be updated right now.' });
+  }
+});
+
+app.delete('/api/categories/:categoryId', protect, requireAdmin, async (req, res) => {
+  try {
+    const categoryName = normalizeCategoryName(decodeURIComponent(req.params.categoryId));
+    const replacement = normalizeCategoryName(req.body.replacement);
+
+    const categories = await listCategoryNames();
+    if (categories.length <= 1) {
+      return res.status(400).json({ message: 'At least one category is required.' });
+    }
+
+    if (!categories.some((category) => category.toLowerCase() === categoryName.toLowerCase())) {
+      return res.status(404).json({ message: 'Category not found.' });
+    }
+
+    if (!replacement || replacement.toLowerCase() === categoryName.toLowerCase()) {
+      return res.status(400).json({ message: 'Choose another category to move files into.' });
+    }
+
+    if (!categories.some((category) => category.toLowerCase() === replacement.toLowerCase())) {
+      return res.status(400).json({ message: 'Replacement category not found.' });
+    }
+
+    const nextCategories = await saveCategoryNames(
+      categories.filter((category) => category.toLowerCase() !== categoryName.toLowerCase())
+    );
+    const docs = await listDocuments();
+    await Promise.all(
+      docs
+        .filter((doc) => String(doc.department).toLowerCase() === categoryName.toLowerCase())
+        .map((doc) => updateDocumentRecord(doc._id || doc.id, { department: replacement }))
+    );
+
+    res.json({
+      categories: serializeCategories(nextCategories, req.user),
+      replacement,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Category could not be deleted right now.' });
+  }
+});
+
 app.post('/api/upload', protect, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -1547,6 +1753,7 @@ app.patch('/api/documents/:docId', protect, async (req, res) => {
     const updatedDoc = await updateDocumentRecord(normalizedDoc._id || normalizedDoc.id, {
       title,
       description,
+      department,
     });
 
     res.json(serializeDocument(updatedDoc, req.user));
@@ -1742,6 +1949,7 @@ app.post('/api/documents/:docId/comments', protect, async (req, res) => {
       userName: req.user.name || req.user.username || 'Member',
       text,
       createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     const updatedDoc = await updateDocumentRecord(normalizedDoc._id || normalizedDoc.id, {
@@ -1751,6 +1959,92 @@ app.post('/api/documents/:docId/comments', protect, async (req, res) => {
     res.json(serializeDocument(updatedDoc, req.user));
   } catch (error) {
     res.status(500).json({ message: 'Your comment could not be posted right now.' });
+  }
+});
+
+app.patch('/api/documents/:docId/comments/:commentId', protect, async (req, res) => {
+  try {
+    const text = String(req.body.text || '').trim();
+    if (!text) {
+      return res.status(400).json({ message: 'Please write a comment before saving it.' });
+    }
+
+    const doc = await findDocumentById(req.params.docId);
+    const normalizedDoc = normalizeLocalDocument(typeof doc?.toObject === 'function' ? doc.toObject() : doc);
+    const department = normalizeDepartment(req.body.department || normalizedDoc?.department);
+
+    if (!normalizedDoc) {
+      return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    if (!canViewDocument(req.user, normalizedDoc)) {
+      return res.status(403).json({ message: 'This document is still pending admin approval.' });
+    }
+
+    const existingComment = normalizedDoc.comments.find(
+      (entry) => String(entry.id) === String(req.params.commentId)
+    );
+
+    if (!existingComment) {
+      return res.status(404).json({ message: 'Comment not found.' });
+    }
+
+    if (!canEditComment(req.user, existingComment)) {
+      return res.status(403).json({ message: 'Only the comment sender can edit this comment.' });
+    }
+
+    const updatedDoc = await updateDocumentRecord(normalizedDoc._id || normalizedDoc.id, {
+      comments: normalizedDoc.comments.map((entry) =>
+        String(entry.id) === String(existingComment.id)
+          ? {
+              ...entry,
+              text,
+              updatedAt: new Date(),
+            }
+          : entry
+      ),
+    });
+
+    res.json(serializeDocument(updatedDoc, req.user));
+  } catch (error) {
+    res.status(500).json({ message: 'Your comment could not be updated right now.' });
+  }
+});
+
+app.delete('/api/documents/:docId/comments/:commentId', protect, async (req, res) => {
+  try {
+    const doc = await findDocumentById(req.params.docId);
+    const normalizedDoc = normalizeLocalDocument(typeof doc?.toObject === 'function' ? doc.toObject() : doc);
+
+    if (!normalizedDoc) {
+      return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    if (!canViewDocument(req.user, normalizedDoc)) {
+      return res.status(403).json({ message: 'This document is still pending admin approval.' });
+    }
+
+    const existingComment = normalizedDoc.comments.find(
+      (entry) => String(entry.id) === String(req.params.commentId)
+    );
+
+    if (!existingComment) {
+      return res.status(404).json({ message: 'Comment not found.' });
+    }
+
+    if (!canDeleteComment(req.user, existingComment)) {
+      return res.status(403).json({ message: 'Only the comment sender or an admin can delete this comment.' });
+    }
+
+    const updatedDoc = await updateDocumentRecord(normalizedDoc._id || normalizedDoc.id, {
+      comments: normalizedDoc.comments.filter(
+        (entry) => String(entry.id) !== String(existingComment.id)
+      ),
+    });
+
+    res.json(serializeDocument(updatedDoc, req.user));
+  } catch (error) {
+    res.status(500).json({ message: 'Your comment could not be deleted right now.' });
   }
 });
 
@@ -1807,6 +2101,24 @@ app.post('/api/admin/promote', protect, async (req, res) => {
 
   await promoteUserRecord(req.body.targetId);
   res.json({ message: 'Promoted' });
+});
+
+app.delete('/api/admin/users/:userId', protect, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const targetUser = await findUserById(req.params.userId);
+  if (!targetUser) {
+    return res.status(404).json({ message: 'User not found.' });
+  }
+
+  if (targetUser.role === 'admin') {
+    return res.status(403).json({ message: 'Admin users cannot be deleted.' });
+  }
+
+  await deleteUserRecord(targetUser._id || targetUser.id);
+  res.json({ message: 'User deleted.' });
 });
 
 app.listen(PORT, () => console.log(`Titan Ultra Server Online on ${PORT}`));

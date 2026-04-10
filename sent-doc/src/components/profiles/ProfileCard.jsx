@@ -1,9 +1,9 @@
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
-import { FiEye, FiUserPlus } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { FiEye, FiTrash2, FiUserPlus } from 'react-icons/fi';
+import { useLanguage } from '../../lib/useLanguage';
 
-export default function ProfileCard({ user, canPromote, onView, onPromote }) {
+export default function ProfileCard({ user, canPromote, canDelete, deleting, onView, onPromote, onDelete }) {
   const { t } = useLanguage();
 
   return (
@@ -56,9 +56,27 @@ export default function ProfileCard({ user, canPromote, onView, onPromote }) {
         </button>
 
         {canPromote && (
-          <button type="button" onClick={() => onPromote(user)} className="main-btn profile-action-btn">
+          <button
+            type="button"
+            onClick={() => onPromote(user)}
+            className="main-btn profile-action-btn profile-icon-btn"
+            aria-label={t('promote_to_admin')}
+            title={t('promote_to_admin')}
+          >
             <FiUserPlus />
-            <span>{t('promote_to_admin')}</span>
+          </button>
+        )}
+
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(user)}
+            className="danger-btn profile-action-btn profile-icon-btn"
+            aria-label={t('delete_user')}
+            title={t('delete_user')}
+            disabled={deleting}
+          >
+            <FiTrash2 />
           </button>
         )}
       </div>

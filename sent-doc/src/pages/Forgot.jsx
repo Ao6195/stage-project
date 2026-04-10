@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiCheckCircle, FiKey, FiLock, FiMail, FiRefreshCw } from 'react-icons/fi';
-import { useLanguage } from '../lib/i18n';
-
-const API = 'http://localhost:5000/api/auth';
+import { AUTH_API } from '../lib/api';
+import { useLanguage } from '../lib/useLanguage';
 
 export default function Forgot() {
   const { t } = useLanguage();
@@ -26,7 +25,7 @@ export default function Forgot() {
     setSubmitting(true);
 
     try {
-      const response = await axios.post(`${API}/forgot-password/request-code`, { email });
+      const response = await axios.post(`${AUTH_API}/forgot-password/request-code`, { email });
       setStep(2);
       setSuccess(response.data.message || t('reset_code_sent'));
     } catch (error) {
@@ -48,14 +47,14 @@ export default function Forgot() {
     setSubmitting(true);
 
     try {
-      const response = await axios.post(`${API}/forgot-password/reset`, {
+      const response = await axios.post(`${AUTH_API}/forgot-password/reset`, {
         email,
         code,
         newPassword,
         confirmPassword,
       });
       setSuccess(response.data.message || t('password_updated'));
-      setTimeout(() => navigate('/login'), 900);
+      setTimeout(() => navigate('/'), 900);
     } catch (error) {
       setError(error.response?.data?.message || t('password_reset_failed'));
     } finally {
@@ -168,7 +167,7 @@ export default function Forgot() {
           )}
 
           <div className="auth-inline-links space-top">
-            <Link to="/login" className="link">
+            <Link to="/" className="link">
               <span className="inline-link-with-icon">
                 <FiArrowLeft />
                 <span>{t('back_to_login')}</span>

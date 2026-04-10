@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiArrowLeft, FiCheckCircle, FiKey, FiRefreshCw, FiShield } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function VerificationForm({
   code,

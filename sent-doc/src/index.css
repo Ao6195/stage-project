@@ -870,6 +870,18 @@ textarea::placeholder {
   flex-wrap: wrap;
 }
 
+.category-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.category-bar .dept-tabs {
+  flex: 1;
+  min-width: 0;
+}
+
 .sort-toolbar {
   display: flex;
   align-items: center;
@@ -976,6 +988,7 @@ textarea::placeholder {
 
 .upload-box input,
 .upload-box textarea,
+.upload-box select,
 .search-card input,
 .input-group input {
   width: 100%;
@@ -990,6 +1003,7 @@ textarea::placeholder {
 
 [data-mode='dark'] .upload-box input,
 [data-mode='dark'] .upload-box textarea,
+[data-mode='dark'] .upload-box select,
 [data-mode='dark'] .search-card input,
 [data-mode='dark'] .input-group input {
   background: rgba(15, 27, 45, 0.92);
@@ -998,6 +1012,22 @@ textarea::placeholder {
 .upload-box textarea {
   min-height: 52px;
   resize: none;
+}
+
+.category-select,
+.modal-select {
+  appearance: none;
+  background-image:
+    linear-gradient(135deg, transparent 50%, var(--primary) 50%),
+    linear-gradient(45deg, var(--primary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px);
+  background-size:
+    6px 6px,
+    6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 42px !important;
 }
 
 .upload-box input[type='file'] {
@@ -1337,6 +1367,18 @@ textarea::placeholder {
   min-width: 0;
 }
 
+.card-actions > .admin-icon-btn {
+  flex: 0 0 38px;
+}
+
+.admin-icon-btn {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 !important;
+}
+
 .action-link-btn,
 .card-mini-btn {
   min-width: 0;
@@ -1425,7 +1467,7 @@ textarea::placeholder {
 
 .profile-card-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) repeat(2, 44px);
   gap: 10px;
   margin-top: 12px;
 }
@@ -1438,6 +1480,13 @@ textarea::placeholder {
   text-align: center;
   white-space: normal;
   line-height: 1.2;
+}
+
+.profile-icon-btn {
+  width: 44px !important;
+  min-width: 44px;
+  padding: 0 !important;
+  justify-self: end;
 }
 
 .empty-state-card {
@@ -1555,6 +1604,117 @@ textarea::placeholder {
 
 .modal-confirm-btn {
   width: 100%;
+}
+
+.category-manager-compact {
+  position: relative;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.category-manage-trigger {
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+}
+
+.category-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 8px;
+  width: min(300px, calc(100vw - 48px));
+  padding: 10px;
+  border: 1px solid rgba(191, 208, 226, 0.78);
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-mode='dark'] .category-dropdown {
+  border-color: rgba(46, 69, 99, 0.72);
+  background: rgba(15, 27, 45, 0.98);
+}
+
+.category-dropdown-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+}
+
+.category-dropdown-list {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.category-dropdown-row,
+.category-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-dropdown-row {
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid rgba(191, 208, 226, 0.72);
+  border-radius: 12px;
+  background: var(--card-soft);
+}
+
+[data-mode='dark'] .category-dropdown-row {
+  border-color: rgba(46, 69, 99, 0.72);
+}
+
+.category-dropdown-row strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-row-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.category-edit-form {
+  width: 100%;
+}
+
+.category-dropdown-create input,
+.category-edit-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-main);
+  font-size: 0.84rem;
+}
+
+[data-mode='dark'] .category-dropdown-create input,
+[data-mode='dark'] .category-edit-form input {
+  background: rgba(15, 27, 45, 0.92);
+}
+
+.category-icon-btn {
+  width: 34px !important;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 !important;
 }
 
 .staff-modal-card {
@@ -1730,7 +1890,9 @@ textarea::placeholder {
 
 .modal-field input,
 .modal-field textarea,
+.modal-field select,
 .comment-form textarea,
+.comment-edit-form textarea,
 .document-text-editor {
   width: 100%;
   padding: 11px 13px;
@@ -1743,13 +1905,16 @@ textarea::placeholder {
 
 [data-mode='dark'] .modal-field input,
 [data-mode='dark'] .modal-field textarea,
+[data-mode='dark'] .modal-field select,
 [data-mode='dark'] .comment-form textarea,
+[data-mode='dark'] .comment-edit-form textarea,
 [data-mode='dark'] .document-text-editor {
   background: rgba(15, 27, 45, 0.92);
 }
 
 .modal-field textarea,
 .comment-form textarea,
+.comment-edit-form textarea,
 .document-text-editor {
   min-height: 112px;
   resize: vertical;
@@ -1757,7 +1922,9 @@ textarea::placeholder {
 
 .modal-field input:focus,
 .modal-field textarea:focus,
+.modal-field select:focus,
 .comment-form textarea:focus,
+.comment-edit-form textarea:focus,
 .document-text-editor:focus {
   border-color: rgba(29, 78, 216, 0.38);
   box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12);
@@ -2054,6 +2221,7 @@ textarea::placeholder {
 }
 
 .comment-item {
+  position: relative;
   padding: 18px;
   border-radius: 20px;
   background:
@@ -2066,16 +2234,117 @@ textarea::placeholder {
   border-color: rgba(46, 69, 99, 0.72);
 }
 
+.comment-item-editing {
+  border-color: rgba(29, 78, 216, 0.24);
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.08);
+}
+
+.comment-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 7px;
+}
+
+.comment-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(191, 208, 226, 0.72);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.comment-icon-btn:hover {
+  background: var(--accent);
+  color: var(--primary);
+}
+
+.comment-icon-btn.danger {
+  color: var(--danger);
+}
+
+.comment-icon-btn.danger:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--danger);
+}
+
+[data-mode='dark'] .comment-icon-btn {
+  background: rgba(8, 17, 30, 0.82);
+  border-color: rgba(46, 69, 99, 0.72);
+}
+
+[data-mode='dark'] .comment-icon-btn:hover {
+  background: rgba(20, 36, 59, 0.96);
+}
+
+.comment-meta {
+  display: grid;
+  gap: 4px;
+  padding-right: 86px;
+}
+
 .comment-top span {
   color: var(--text-muted);
   font-size: 0.82rem;
   font-weight: 600;
 }
 
+.comment-edit-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.comment-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.comment-primary-btn,
+.comment-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  min-width: 104px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.comment-primary-btn {
+  border: 0;
+  color: #ffffff;
+  background: var(--primary);
+}
+
+.comment-secondary-btn {
+  border: 1px solid rgba(191, 208, 226, 0.72);
+  color: var(--text-main);
+  background: var(--card-soft);
+}
+
+[data-mode='dark'] .comment-secondary-btn {
+  background: rgba(8, 17, 30, 0.82);
+  border-color: rgba(46, 69, 99, 0.72);
+}
+
 .comment-item p {
   margin: 10px 0 0;
   color: var(--text-main);
   line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .inline-feedback {
@@ -2559,7 +2828,8 @@ textarea::placeholder {
   .sidebar-footer,
   .dashboard-stat-grid,
   .upload-box,
-  .form-grid {
+  .form-grid,
+  .category-create-form {
     grid-template-columns: 1fr;
   }
 
@@ -2570,7 +2840,6 @@ textarea::placeholder {
   .profile-meta-row,
   .auth-actions-row,
   .document-header-top,
-  .comment-top,
   .vote-actions,
   .staff-range-switcher {
     flex-direction: column;
@@ -2578,8 +2847,18 @@ textarea::placeholder {
   }
 
   .sort-toolbar,
+  .category-bar,
   .sort-tabs {
     align-items: stretch;
+  }
+
+  .category-bar {
+    flex-direction: column;
+  }
+
+  .category-manager-compact {
+    align-self: flex-end;
+    margin-left: 0;
   }
 
   .card-grid,
@@ -2599,7 +2878,8 @@ textarea::placeholder {
   }
 
   .document-editor-actions,
-  .document-tag-row {
+  .document-tag-row,
+  .comment-edit-actions {
     flex-direction: column;
   }
 

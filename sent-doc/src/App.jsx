@@ -8,6 +8,45 @@ import Portal from './pages/Portal';
 import Profiles from './pages/Profiles';
 import { LanguageProvider } from './lib/i18n';
 
+const readStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+function ProtectedLayout({
+  token,
+  user,
+  theme,
+  mode,
+  settingsOpen,
+  onSettingsToggle,
+  onThemeChange,
+  onModeChange,
+  onLogout,
+  children,
+}) {
+  if (!token) return <Navigate to="/" replace />;
+
+  return (
+    <div className="app-layout">
+      <AppSidebar
+        user={user}
+        theme={theme}
+        mode={mode}
+        settingsOpen={settingsOpen}
+        onSettingsToggle={onSettingsToggle}
+        onThemeChange={onThemeChange}
+        onModeChange={onModeChange}
+        onLogout={onLogout}
+      />
+      <main className="main-content">{children}</main>
+    </div>
+  );
+}
+
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const storedTheme = localStorage.getItem('theme') || 'cloud';
@@ -18,7 +57,7 @@ export default function App() {
     localStorage.getItem('mode') || (storedTheme === 'dark' ? 'dark' : 'light')
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = readStoredUser();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -36,39 +75,31 @@ export default function App() {
     localStorage.setItem('mode', savedMode);
     localStorage.setItem('language', savedLanguage);
     setToken(null);
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
-  const AppLayout = ({ children }) => {
-    if (!token) return <Navigate to="/login" />;
-
-    return (
-      <div className="app-layout">
-        <AppSidebar
-          user={user}
-          theme={theme}
-          mode={mode}
-          settingsOpen={settingsOpen}
-          onSettingsToggle={() => setSettingsOpen((current) => !current)}
-          onThemeChange={setTheme}
-          onModeChange={setMode}
-          onLogout={logout}
-        />
-        <main className="main-content">{children}</main>
-      </div>
-    );
+  const layoutProps = {
+    token,
+    user,
+    theme,
+    mode,
+    settingsOpen,
+    onSettingsToggle: () => setSettingsOpen((current) => !current),
+    onThemeChange: setTheme,
+    onModeChange: setMode,
+    onLogout: logout,
   };
 
   return (
     <LanguageProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to={token ? '/portal' : '/login'} />} />
-          <Route path="/login" element={token ? <Navigate to="/portal" /> : <Auth setToken={setToken} />} />
-          <Route path="/forgot" element={token ? <Navigate to="/portal" /> : <Forgot />} />
-          <Route path="/portal" element={<AppLayout><Portal /></AppLayout>} />
-          <Route path="/profiles" element={<AppLayout><Profiles /></AppLayout>} />
-          <Route path="/documents/:docId" element={<AppLayout><DocumentView /></AppLayout>} />
+          <Route path="/" element={token ? <Navigate to="/portal" replace /> : <Auth setToken={setToken} />} />
+          <Route path="/login" element={<Navigate to={token ? '/portal' : '/'} replace />} />
+          <Route path="/forgot" element={token ? <Navigate to="/portal" replace /> : <Forgot />} />
+          <Route path="/portal" element={<ProtectedLayout {...layoutProps}><Portal /></ProtectedLayout>} />
+          <Route path="/profiles" element={<ProtectedLayout {...layoutProps}><Profiles /></ProtectedLayout>} />
+          <Route path="/documents/:docId" element={<ProtectedLayout {...layoutProps}><DocumentView /></ProtectedLayout>} />
         </Routes>
       </BrowserRouter>
     </LanguageProvider>

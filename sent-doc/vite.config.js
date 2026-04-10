@@ -7,4 +7,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['three', 'vanta/dist/vanta.waves.min'],
   },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:5001',
+    },
+  },
 })

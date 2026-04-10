@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useParams } from 'react-router-dom';
+import { FiTrash2 } from 'react-icons/fi';
+import ConfirmModal from '../components/common/ConfirmModal';
 import DocumentComments from '../components/documents/DocumentComments';
 import DocumentHeaderCard from '../components/documents/DocumentHeaderCard';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import DocumentSidebar from '../components/documents/DocumentSidebar';
 import { API_BASE, getAuthConfig } from '../lib/api';
-import { useLanguage } from '../lib/i18n';
+import { useLanguage } from '../lib/useLanguage';
 
 export default function DocumentView() {
   const { t } = useLanguage();
@@ -17,6 +19,11 @@ export default function DocumentView() {
   const [success, setSuccess] = useState('');
   const [commentText, setCommentText] = useState('');
   const [commenting, setCommenting] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState('');
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [savingCommentId, setSavingCommentId] = useState('');
+  const [deletingCommentId, setDeletingCommentId] = useState('');
+  const [pendingDeleteComment, setPendingDeleteComment] = useState(null);
   const [voting, setVoting] = useState(false);
   const [openingFile, setOpeningFile] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -29,7 +36,7 @@ export default function DocumentView() {
   const [textContent, setTextContent] = useState('');
   const [metaForm, setMetaForm] = useState({ title: '', description: '' });
 
-  const fetchDocument = async () => {
+  const fetchDocument = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -41,11 +48,11 @@ export default function DocumentView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [docId, t]);
 
   useEffect(() => {
     fetchDocument();
-  }, [docId]);
+  }, [fetchDocument]);
 
   useEffect(() => {
     if (!doc) return;
@@ -80,7 +87,7 @@ export default function DocumentView() {
     };
 
     loadTextContent();
-  }, [doc, docId]);
+  }, [doc, docId, t]);
 
   const handleVote = async (value) => {
     setVoting(true);
@@ -122,6 +129,90 @@ export default function DocumentView() {
       setError(requestError.response?.data?.message || t('comment_post_failed'));
     } finally {
       setCommenting(false);
+    }
+  };
+
+  const handleCommentEditStart = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.text);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleCommentEditCancel = () => {
+    setEditingCommentId('');
+    setEditingCommentText('');
+  };
+
+  const handleCommentEditSubmit = async (event, commentId) => {
+    event.preventDefault();
+
+    const nextText = editingCommentText.trim();
+    if (!nextText) return;
+
+    const currentComment = doc?.comments?.find((comment) => comment.id === commentId);
+    if (!currentComment) return;
+
+    if (nextText === currentComment.text.trim()) {
+      handleCommentEditCancel();
+      return;
+    }
+
+    setSavingCommentId(commentId);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axios.patch(
+        `${API_BASE}/documents/${docId}/comments/${commentId}`,
+        { text: nextText },
+        getAuthConfig()
+      );
+      setDoc(response.data);
+      handleCommentEditCancel();
+      setSuccess(t('comment_updated_successfully'));
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('comment_update_failed'));
+    } finally {
+      setSavingCommentId('');
+    }
+  };
+
+  const handleCommentDeleteRequest = (comment) => {
+    setPendingDeleteComment(comment);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleCommentDeleteCancel = () => {
+    setPendingDeleteComment(null);
+  };
+
+  const handleCommentDelete = async () => {
+    if (!pendingDeleteComment) return;
+
+    const commentId = pendingDeleteComment.id;
+    setDeletingCommentId(commentId);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axios.delete(
+        `${API_BASE}/documents/${docId}/comments/${commentId}`,
+        getAuthConfig()
+      );
+      setDoc(response.data);
+      setPendingDeleteComment(null);
+
+      if (editingCommentId === commentId) {
+        handleCommentEditCancel();
+      }
+
+      setSuccess(t('comment_deleted_successfully'));
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || t('comment_delete_failed'));
+    } finally {
+      setDeletingCommentId('');
     }
   };
 
@@ -290,9 +381,34 @@ export default function DocumentView() {
         commentText={commentText}
         commenting={commenting}
         comments={doc.comments}
+        editingCommentId={editingCommentId}
+        editingCommentText={editingCommentText}
+        savingCommentId={savingCommentId}
+        deletingCommentId={deletingCommentId}
         onCommentChange={setCommentText}
         onCommentSubmit={handleCommentSubmit}
+        onCommentEditStart={handleCommentEditStart}
+        onCommentEditCancel={handleCommentEditCancel}
+        onCommentEditChange={setEditingCommentText}
+        onCommentEditSubmit={handleCommentEditSubmit}
+        onCommentDelete={handleCommentDeleteRequest}
       />
+
+      {pendingDeleteComment ? (
+        <ConfirmModal
+          eyebrow={t('confirmation')}
+          title={t('delete_comment')}
+          copy={t('delete_comment_copy')}
+          meta={<span>{pendingDeleteComment.text}</span>}
+          confirmLabel={t('delete')}
+          busyLabel={t('deleting')}
+          busy={deletingCommentId === pendingDeleteComment.id}
+          confirmClassName="danger-btn modal-confirm-btn"
+          ConfirmIcon={FiTrash2}
+          onClose={handleCommentDeleteCancel}
+          onConfirm={handleCommentDelete}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiAtSign, FiLock, FiMail } from 'react-icons/fi';
-import { useLanguage } from '../../lib/i18n';
+import { useLanguage } from '../../lib/useLanguage';
 
 export default function LoginForm({ form, submitting, onChange, onSubmit, googleBlock }) {
   const { t } = useLanguage();
