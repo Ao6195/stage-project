@@ -1750,6 +1750,7 @@ app.patch('/api/documents/:docId', protect, async (req, res) => {
       return res.status(403).json({ message: 'Only the sender or an admin can modify this document.' });
     }
 
+    const department = normalizeDepartment(req.body.department || normalizedDoc.department);
     const updatedDoc = await updateDocumentRecord(normalizedDoc._id || normalizedDoc.id, {
       title,
       description,
@@ -1758,6 +1759,7 @@ app.patch('/api/documents/:docId', protect, async (req, res) => {
 
     res.json(serializeDocument(updatedDoc, req.user));
   } catch (error) {
+    console.error('Document update failed:', error.message);
     res.status(500).json({ message: 'The document could not be updated right now.' });
   }
 });
@@ -1971,7 +1973,6 @@ app.patch('/api/documents/:docId/comments/:commentId', protect, async (req, res)
 
     const doc = await findDocumentById(req.params.docId);
     const normalizedDoc = normalizeLocalDocument(typeof doc?.toObject === 'function' ? doc.toObject() : doc);
-    const department = normalizeDepartment(req.body.department || normalizedDoc?.department);
 
     if (!normalizedDoc) {
       return res.status(404).json({ message: 'Document not found.' });

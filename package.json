@@ -1,4 +1,7 @@
 {
+  "name": "itdoc",
+  "private": true,
+  "description": "Full-stack document management portal with authentication, Cloudinary uploads, categories, comments, voting, and admin tools.",
   "scripts": {
     "server": "npm run server --prefix backend",
     "frontend": "npm run dev --prefix sent-doc",

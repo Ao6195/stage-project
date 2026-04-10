@@ -2,6 +2,7 @@
   "name": "sent-doc",
   "private": true,
   "version": "0.0.0",
+  "description": "React frontend for the ITDOC document management portal.",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,4 +1,7 @@
 {
+  "name": "itdoc-backend",
+  "private": true,
+  "description": "Express API for ITDOC authentication, documents, categories, Cloudinary storage, email codes, and admin actions.",
   "scripts": {
     "server": "node server.js",
     "reset-db": "node resetDatabase.js"
