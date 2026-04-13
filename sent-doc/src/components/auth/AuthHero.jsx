@@ -1,19 +1,24 @@
-import React from 'react';
+import React, { memo } from 'react';
 import AuthHeroVisual from './AuthHeroVisual';
-import { useLanguage } from '../../lib/useLanguage';
 
-export default function AuthHero() {
-  const { t } = useLanguage();
-
+function AuthHero({
+  title,
+  accent,
+  caption,
+  mode,
+  compactTitle = false,
+}) {
   return (
-    <section className="auth-hero compact-hero">
-      <div className="auth-hero-head">
-        <div className="auth-brand compact-brand">
-          <h1>{t('private_workspace_access')}</h1>
-        </div>
-      </div>
-
-      <AuthHeroVisual />
+    <section className="auth-hero compact-hero auth-hero-smokey">
+      <AuthHeroVisual
+        title={title}
+        accent={accent}
+        caption={caption}
+        mode={mode}
+        compactTitle={compactTitle}
+      />
     </section>
   );
 }
+
+export default memo(AuthHero);

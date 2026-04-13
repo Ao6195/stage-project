@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCheckCircle, FiKey, FiLock, FiMail, FiRefreshCw } from 'react-icons/fi';
+import { FiArrowLeft, FiCheckCircle, FiKey, FiLock, FiMail } from 'react-icons/fi';
+import AuthHero from '../components/auth/AuthHero';
+import SmokeyModeToggle from '../components/ui/SmokeyModeToggle';
 import { AUTH_API } from '../lib/api';
 import { useLanguage } from '../lib/useLanguage';
 
-export default function Forgot() {
-  const { t } = useLanguage();
+export default function Forgot({ mode }) {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
@@ -65,114 +67,126 @@ export default function Forgot() {
   return (
     <div className="auth-screen">
       <div className="auth-shell minimal-shell forgot-shell">
-        <section className="auth-hero compact-hero">
-          <span className="auth-badge">
-            <FiRefreshCw />
-            <span>{t('password_reset')}</span>
-          </span>
-          <div className="auth-brand compact-brand">
-            <h1>{t('recover_access')}</h1>
-          </div>
-        </section>
+        <AuthHero
+          title={language === 'fr' ? "Recuperer l'acces a" : 'Recover access to'}
+          accent="ITDOC"
+          caption={t('password_reset')}
+          mode={mode}
+        />
 
         <section className="auth-panel">
-          <div className="auth-panel-head">
-            <p className="eyebrow">{t('recovery')}</p>
-            <h2>{step === 1 ? t('request_code') : t('create_new_password')}</h2>
+          <div className="auth-panel-main">
+            <div className="auth-panel-head auth-panel-head-with-logo">
+              <div className="auth-panel-head-copy">
+                <p className="eyebrow">{t('recovery')}</p>
+                <h2>{step === 1 ? t('request_code') : t('create_new_password')}</h2>
+              </div>
+              <div className="auth-panel-tools">
+                <img
+                  className="brand-logo-img auth-panel-logo"
+                  src="/ministere-equipement-logo.jpg"
+                  alt="Logo du Ministere de l'Equipement et de l'Eau"
+                />
+              </div>
+            </div>
+
+            {feedback && (
+              <div className={`feedback-panel ${feedback.type}`} role="status" aria-live="polite">
+                {feedback.message}
+              </div>
+            )}
+
+            {step === 1 ? (
+              <form className="auth-form" onSubmit={requestCode}>
+                <label className="input-group">
+                  <span className="input-label">
+                    <FiMail />
+                    <span>{t('email')}</span>
+                  </span>
+                  <input
+                    type="email"
+                    placeholder={t('email')}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                </label>
+
+                <button type="submit" className="main-btn auth-submit-btn" disabled={submitting}>
+                  <FiMail />
+                  <span>{submitting ? t('sending') : t('send_code')}</span>
+                </button>
+              </form>
+            ) : (
+              <form className="auth-form" onSubmit={resetPassword}>
+                <label className="input-group">
+                  <span className="input-label">
+                    <FiKey />
+                    <span>{t('verification_code')}</span>
+                  </span>
+                  <input
+                    type="text"
+                    placeholder={t('code')}
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    maxLength={6}
+                    inputMode="numeric"
+                    required
+                  />
+                </label>
+
+                <div className="form-grid">
+                  <label className="input-group">
+                    <span className="input-label">
+                      <FiLock />
+                      <span>{t('new_password')}</span>
+                    </span>
+                    <input
+                      type="password"
+                      placeholder={t('new_password')}
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      autoComplete="new-password"
+                      required
+                    />
+                  </label>
+
+                  <label className="input-group">
+                    <span className="input-label">
+                      <FiCheckCircle />
+                      <span>{t('confirm_password')}</span>
+                    </span>
+                    <input
+                      type="password"
+                      placeholder={t('confirm_password')}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      autoComplete="new-password"
+                      required
+                    />
+                  </label>
+                </div>
+
+                <button type="submit" className="main-btn auth-submit-btn" disabled={submitting}>
+                  <FiCheckCircle />
+                  <span>{submitting ? t('updating') : t('update_password')}</span>
+                </button>
+              </form>
+            )}
+
+            <div className="auth-inline-links space-top">
+              <Link to="/" className="link">
+                <span className="inline-link-with-icon">
+                  <FiArrowLeft />
+                  <span>{t('back_to_login')}</span>
+                </span>
+              </Link>
+            </div>
           </div>
 
-          {feedback && (
-            <div className={`feedback-panel ${feedback.type}`} role="status" aria-live="polite">
-              {feedback.message}
-            </div>
-          )}
-
-          {step === 1 ? (
-            <form className="auth-form" onSubmit={requestCode}>
-              <label className="input-group">
-                <span className="input-label">
-                  <FiMail />
-                  <span>{t('email')}</span>
-                </span>
-                <input
-                  type="email"
-                  placeholder={t('email')}
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  autoComplete="email"
-                  required
-                />
-              </label>
-
-              <button type="submit" className="main-btn auth-submit-btn" disabled={submitting}>
-                <FiMail />
-                <span>{submitting ? t('sending') : t('send_code')}</span>
-              </button>
-            </form>
-          ) : (
-            <form className="auth-form" onSubmit={resetPassword}>
-              <label className="input-group">
-                <span className="input-label">
-                  <FiKey />
-                  <span>{t('verification_code')}</span>
-                </span>
-                <input
-                  type="text"
-                  placeholder={t('code')}
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  maxLength={6}
-                  inputMode="numeric"
-                  required
-                />
-              </label>
-
-              <div className="form-grid">
-                <label className="input-group">
-                  <span className="input-label">
-                    <FiLock />
-                    <span>{t('new_password')}</span>
-                  </span>
-                  <input
-                    type="password"
-                    placeholder={t('new_password')}
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    autoComplete="new-password"
-                    required
-                  />
-                </label>
-
-                <label className="input-group">
-                  <span className="input-label">
-                    <FiCheckCircle />
-                    <span>{t('confirm_password')}</span>
-                  </span>
-                  <input
-                    type="password"
-                    placeholder={t('confirm_password')}
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    autoComplete="new-password"
-                    required
-                  />
-                </label>
-              </div>
-
-              <button type="submit" className="main-btn auth-submit-btn" disabled={submitting}>
-                <FiCheckCircle />
-                <span>{submitting ? t('updating') : t('update_password')}</span>
-              </button>
-            </form>
-          )}
-
-          <div className="auth-inline-links space-top">
-            <Link to="/" className="link">
-              <span className="inline-link-with-icon">
-                <FiArrowLeft />
-                <span>{t('back_to_login')}</span>
-              </span>
-            </Link>
+          <div className="auth-panel-footer auth-panel-footer--side">
+            <SmokeyModeToggle />
           </div>
         </section>
       </div>

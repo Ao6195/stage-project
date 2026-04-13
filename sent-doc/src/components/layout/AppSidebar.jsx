@@ -22,14 +22,27 @@ export default function AppSidebar({
   onThemeChange,
   onModeChange,
   onLogout,
+  onNavigate,
 }) {
   const { language, setLanguage, t } = useLanguage();
 
   return (
     <aside className="sidebar">
       <div className="sidebar-brand-block">
-        <button type="button" className="logo logo-link-btn" onClick={onLogout}>
-          IT<span>DOC</span>
+        <button
+          type="button"
+          className="logo logo-link-btn sidebar-logo-btn"
+          onClick={onLogout}
+          title="ITDOC"
+        >
+          <img
+            className="brand-logo-img sidebar-logo-img"
+            src="/ministere-equipement-logo.jpg"
+            alt="Logo du Ministere de l'Equipement et de l'Eau"
+          />
+          <span className="logo-wordmark">
+            IT<span className="logo-accent">DOC</span>
+          </span>
         </button>
       </div>
 
@@ -42,13 +55,21 @@ export default function AppSidebar({
       </div>
 
       <nav className="side-nav">
-        <NavLink to="/portal" className={({ isActive }) => (isActive ? 'active' : '')}>
+        <NavLink
+          to="/portal"
+          className={({ isActive }) => (isActive ? 'active' : '')}
+          onClick={onNavigate}
+        >
           <span className="nav-link-inner">
             <FiGrid className="nav-icon" />
             <span>{t('assets_portal')}</span>
           </span>
         </NavLink>
-        <NavLink to="/profiles" className={({ isActive }) => (isActive ? 'active' : '')}>
+        <NavLink
+          to="/profiles"
+          className={({ isActive }) => (isActive ? 'active' : '')}
+          onClick={onNavigate}
+        >
           <span className="nav-link-inner">
             <FiUsers className="nav-icon" />
             <span>{t('staff_network')}</span>
@@ -146,7 +167,10 @@ export default function AppSidebar({
           </div>
         )}
 
-        <button className="logout-btn sidebar-action-btn" onClick={onLogout}>
+        <button
+          className="logout-btn sidebar-action-btn"
+          onClick={onLogout}
+        >
           <FiLogOut />
           <span>{t('logout')}</span>
         </button>

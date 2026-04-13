@@ -6,6 +6,7 @@ import AuthHero from '../components/auth/AuthHero';
 import AuthTabs from '../components/auth/AuthTabs';
 import LoginForm from '../components/auth/LoginForm';
 import RegisterForm from '../components/auth/RegisterForm';
+import SmokeyModeToggle from '../components/ui/SmokeyModeToggle';
 import VerificationForm from '../components/auth/VerificationForm';
 import {
   LOGIN_VERIFY_VIEW,
@@ -35,7 +36,9 @@ const VIEW_TITLES = {
   [LOGIN_VERIFY_VIEW]: 'login_verification',
 };
 
-export default function Auth({ setToken }) {
+const SHOW_VIEW_TITLE = new Set([REGISTER_VERIFY_VIEW, LOGIN_VERIFY_VIEW]);
+
+export default function Auth({ setToken, mode }) {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const googleEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
@@ -206,112 +209,132 @@ export default function Auth({ setToken }) {
   return (
     <div className="auth-screen">
       <div className="auth-shell minimal-shell">
-        <AuthHero />
+        <AuthHero
+          title={language === 'fr' ? 'Se connecter a' : 'Sign in to'}
+          accent="ITDOC"
+          caption={t('private_workspace_access')}
+          mode={mode}
+          compactTitle
+        />
 
         <section className="auth-panel">
-          <div className="auth-panel-head">
-            <p className="eyebrow">{t('welcome')}</p>
-            <h2>{t(VIEW_TITLES[view])}</h2>
+          <div className="auth-panel-main">
+            <div className="auth-panel-head auth-panel-head-with-logo">
+              <div className="auth-panel-head-copy">
+                {SHOW_VIEW_TITLE.has(view) && <h2>{t(VIEW_TITLES[view])}</h2>}
+              </div>
+              <div className="auth-panel-tools">
+                <img
+                  className="brand-logo-img auth-panel-logo"
+                  src="/ministere-equipement-logo.jpg"
+                  alt="Logo du Ministere de l'Equipement et de l'Eau"
+                />
+              </div>
+            </div>
+
+            {(view === LOGIN_VIEW || view === REGISTER_VIEW) && (
+              <AuthTabs view={view} onSwitch={switchTo} />
+            )}
+
+            {feedback && (
+              <div className={`feedback-panel ${feedback.type}`} role="status" aria-live="polite">
+                {feedback.message}
+              </div>
+            )}
+
+            {view === LOGIN_VIEW && (
+              <LoginForm
+                form={loginForm}
+                submitting={submitting}
+                onChange={updateLoginForm}
+                onSubmit={submitLogin}
+                googleBlock={
+                  googleEnabled ? (
+                    <div className="auth-google-block">
+                      <div className="auth-divider">
+                        <span>{t('or_continue_with')}</span>
+                      </div>
+                      <div className="auth-google-button">
+                        <GoogleLogin
+                          onSuccess={handleGoogleSuccess}
+                          onError={() => setError(t('google_sign_in_failed'))}
+                          locale={language === 'fr' ? 'fr' : 'en'}
+                          text="continue_with"
+                          theme="outline"
+                          size="large"
+                          shape="pill"
+                          width={320}
+                        />
+                      </div>
+                    </div>
+                  ) : null
+                }
+              />
+            )}
+
+            {view === REGISTER_VIEW && (
+              <RegisterForm
+                form={registerForm}
+                submitting={submitting}
+                onChange={updateRegisterForm}
+                onSubmit={submitRegister}
+                googleBlock={
+                  googleEnabled ? (
+                    <div className="auth-google-block">
+                      <div className="auth-divider">
+                        <span>{t('or_continue_with')}</span>
+                      </div>
+                      <div className="auth-google-button">
+                        <GoogleLogin
+                          onSuccess={handleGoogleSuccess}
+                          onError={() => setError(t('google_sign_in_failed'))}
+                          locale={language === 'fr' ? 'fr' : 'en'}
+                          text="continue_with"
+                          theme="outline"
+                          size="large"
+                          shape="pill"
+                          width={320}
+                        />
+                      </div>
+                    </div>
+                  ) : null
+                }
+              />
+            )}
+
+            {view === REGISTER_VERIFY_VIEW && (
+              <VerificationForm
+                code={registerCode}
+                submitting={submitting}
+                submitLabel={t('create')}
+                busyLabel={t('checking')}
+                onCodeChange={setRegisterCode}
+                onSubmit={submitRegisterCode}
+                onResend={resendRegisterCode}
+                onBack={() => switchTo(REGISTER_VIEW)}
+                backLabel={t('edit')}
+              />
+            )}
+
+            {view === LOGIN_VERIFY_VIEW && (
+              <VerificationForm
+                code={loginCode}
+                submitting={submitting}
+                submitLabel={t('sign_in')}
+                busyLabel={t('checking')}
+                submitIcon="shield"
+                onCodeChange={setLoginCode}
+                onSubmit={submitLoginCode}
+                onResend={resendLoginCode}
+                onBack={() => switchTo(LOGIN_VIEW)}
+                backLabel={t('back')}
+              />
+            )}
           </div>
 
-          {(view === LOGIN_VIEW || view === REGISTER_VIEW) && (
-            <AuthTabs view={view} onSwitch={switchTo} />
-          )}
-
-          {feedback && (
-            <div className={`feedback-panel ${feedback.type}`} role="status" aria-live="polite">
-              {feedback.message}
-            </div>
-          )}
-
-          {view === LOGIN_VIEW && (
-            <LoginForm
-              form={loginForm}
-              submitting={submitting}
-              onChange={updateLoginForm}
-              onSubmit={submitLogin}
-              googleBlock={
-                googleEnabled ? (
-                  <div className="auth-google-block">
-                    <div className="auth-divider">
-                      <span>{t('or_continue_with')}</span>
-                    </div>
-                    <div className="auth-google-button">
-                      <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={() => setError(t('google_sign_in_failed'))}
-                        locale={language === 'fr' ? 'fr' : 'en'}
-                        text="continue_with"
-                        theme="outline"
-                        size="large"
-                        shape="pill"
-                        width={320}
-                      />
-                    </div>
-                  </div>
-                ) : null
-              }
-            />
-          )}
-
-          {view === REGISTER_VIEW && (
-            <RegisterForm
-              form={registerForm}
-              submitting={submitting}
-              onChange={updateRegisterForm}
-              onSubmit={submitRegister}
-              googleBlock={
-                googleEnabled ? (
-                  <div className="auth-google-block">
-                    <div className="auth-divider">
-                      <span>{t('or_continue_with')}</span>
-                    </div>
-                    <div className="auth-google-button">
-                      <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={() => setError(t('google_sign_in_failed'))}
-                        locale={language === 'fr' ? 'fr' : 'en'}
-                        text="continue_with"
-                        theme="outline"
-                        size="large"
-                        shape="pill"
-                        width={320}
-                      />
-                    </div>
-                  </div>
-                ) : null
-              }
-            />
-          )}
-
-          {view === REGISTER_VERIFY_VIEW && (
-            <VerificationForm
-              code={registerCode}
-              submitting={submitting}
-              submitLabel={t('create')}
-              busyLabel={t('checking')}
-              onCodeChange={setRegisterCode}
-              onSubmit={submitRegisterCode}
-              onResend={resendRegisterCode}
-              onBack={() => switchTo(REGISTER_VIEW)}
-              backLabel={t('edit')}
-            />
-          )}
-
-          {view === LOGIN_VERIFY_VIEW && (
-            <VerificationForm
-              code={loginCode}
-              submitting={submitting}
-              submitLabel={t('sign_in')}
-              busyLabel={t('checking')}
-              submitIcon="shield"
-              onCodeChange={setLoginCode}
-              onSubmit={submitLoginCode}
-              onResend={resendLoginCode}
-              onBack={() => switchTo(LOGIN_VIEW)}
-              backLabel={t('back')}
-            />
-          )}
+          <div className="auth-panel-footer auth-panel-footer--side">
+            <SmokeyModeToggle />
+          </div>
         </section>
       </div>
     </div>
